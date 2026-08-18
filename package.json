@@ -8,6 +8,8 @@
     "pnpm": "11.22.0"
   },
   "scripts": {
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
