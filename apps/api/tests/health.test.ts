@@ -29,17 +29,20 @@ describe('health routes', () => {
     });
   });
 
-  it('returns API readiness', async () => {
+  it('returns not ready when database is unavailable', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/health/ready',
     });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(503);
 
     expect(response.json()).toEqual({
-      status: 'ready',
+      status: 'not_ready',
       service: 'api',
+      dependencies: {
+        database: 'unavailable',
+      },
     });
   });
 

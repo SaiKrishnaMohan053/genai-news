@@ -4,3 +4,6 @@ dist
 coverage
 *.log
 pnpm-lock.yaml
+
+apps/web/next-env.d.ts
+packages/database/src/generated/prisma

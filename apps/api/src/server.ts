@@ -1,12 +1,15 @@
 import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
+import { createPrismaClient } from '@genai-news/database';
 
 const env = loadEnv();
+const database = createPrismaClient(env.DATABASE_URL);
 
 const app = buildApp({
   logger: {
     level: env.LOG_LEVEL,
   },
+  database,
 });
 
 async function start(): Promise<void> {
@@ -46,6 +49,8 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await app.close();
+
+    await database.$disconnect();
 
     app.log.info('api shutdown completed');
 

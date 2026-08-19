@@ -2,9 +2,11 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';
+import type { DatabaseClient } from '@genai-news/database';
 
 export interface BuildAppOptions {
   logger?: FastifyServerOptions['logger'];
+  database?: DatabaseClient;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -12,7 +14,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     logger: options.logger ?? true,
   });
 
-  app.register(healthRoutes);
+  app.register(
+    healthRoutes,
+    options.database
+      ? {
+          database: options.database,
+        }
+      : {},
+  );
 
   app.setNotFoundHandler(async (request, reply) => {
     return reply.status(404).send({
