@@ -74,6 +74,31 @@ importers:
         specifier: ^4.3.3
         version: 4.3.3
 
+  apps/worker:
+    dependencies:
+      '@genai-news/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
+      '@genai-news/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      bullmq:
+        specifier: ^6.1.2
+        version: 6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12))
+
   packages/agents: {}
 
   packages/database:

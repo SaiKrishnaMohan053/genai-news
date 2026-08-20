@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "smoke:enqueue": "pnpm build && node --env-file=.env dist/smoke-enqueue.js"
+    "smoke:enqueue": "pnpm build && node --env-file=.env dist/smoke-enqueue.js",
+    "smoke:process": "pnpm build && node --env-file=.env dist/smoke-process.js"
   },
   "dependencies": {
     "@genai-news/schemas": "workspace:*",
