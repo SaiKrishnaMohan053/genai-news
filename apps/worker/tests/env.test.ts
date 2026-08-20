@@ -12,6 +12,7 @@ describe('worker environment configuration', () => {
       NODE_ENV: 'development',
       REDIS_URL: 'redis://localhost:6379',
       LOG_LEVEL: 'info',
+      OTEL_ENABLED: false,
     });
   });
 
@@ -25,5 +26,14 @@ describe('worker environment configuration', () => {
         REDIS_URL: 'invalid',
       }),
     ).toThrow('Invalid worker environment configuration');
+  });
+
+  it('parses enabled telemetry', () => {
+    const env = loadWorkerEnv({
+      ...baseEnv,
+      OTEL_ENABLED: 'true',
+    });
+
+    expect(env.OTEL_ENABLED).toBe(true);
   });
 });

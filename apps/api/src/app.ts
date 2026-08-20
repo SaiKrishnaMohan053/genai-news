@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';
@@ -6,15 +6,24 @@ import type { DatabaseClient } from '@genai-news/database';
 import type { RedisClient } from '@genai-news/queue';
 
 export interface BuildAppOptions {
-  logger?: FastifyServerOptions['logger'];
+  logger?: FastifyBaseLogger | false;
   database?: DatabaseClient;
   redis?: RedisClient;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
-  const app = Fastify({
-    logger: options.logger ?? true,
-  });
+  const app =
+    options.logger === false
+      ? Fastify({
+          logger: false,
+        })
+      : options.logger
+        ? Fastify({
+            loggerInstance: options.logger,
+          })
+        : Fastify({
+            logger: true,
+          });
 
   app.register(healthRoutes, {
     ...(options.database ? { database: options.database } : {}),

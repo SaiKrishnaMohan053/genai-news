@@ -1,72 +1,53 @@
+import { createLogger } from '@genai-news/observability';
 import { createWorkerRedisClient } from '@genai-news/queue';
 
 import { loadWorkerEnv } from './config/env.js';
 import { createSystemWorker } from './worker.js';
+import { tracing } from './instrumentation.js';
 
 const env = loadWorkerEnv();
+
+const logger = createLogger({
+  service: 'worker',
+  environment: env.NODE_ENV,
+  level: env.LOG_LEVEL,
+});
 
 const redis = createWorkerRedisClient(env.REDIS_URL);
 
 const worker = createSystemWorker(redis);
 
-function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message || 'Unknown error',
-      stack: error.stack,
-    };
-  }
-
-  return {
-    name: 'UnknownError',
-    message: String(error),
-  };
-}
-
 worker.on('ready', () => {
-  process.stdout.write(
-    `${JSON.stringify({
-      level: 'info',
-      service: 'worker',
-      message: 'worker ready',
-    })}\n`,
-  );
+  logger.info('worker ready');
 });
 
 worker.on('completed', (job) => {
-  process.stdout.write(
-    `${JSON.stringify({
-      level: 'info',
-      service: 'worker',
-      message: 'job completed',
+  logger.info(
+    {
       jobId: job.id,
       jobName: job.name,
-    })}\n`,
+    },
+    'job completed',
   );
 });
 
 worker.on('failed', (job, error) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      level: 'error',
-      service: 'worker',
-      message: 'job failed',
+  logger.error(
+    {
+      err: error,
       jobId: job?.id,
       jobName: job?.name,
-      error: serializeError(error),
-    })}\n`,
+    },
+    'job failed',
   );
 });
 
 worker.on('error', (error) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      level: 'error',
-      service: 'worker',
-      message: 'worker error',
-      error: serializeError(error),
-    })}\n`,
+  logger.error(
+    {
+      err: error,
+    },
+    'worker error',
   );
 });
 
@@ -79,36 +60,31 @@ async function shutdown(signal: string): Promise<void> {
 
   shuttingDown = true;
 
-  process.stdout.write(
-    `${JSON.stringify({
-      level: 'info',
-      service: 'worker',
-      message: 'worker shutdown started',
+  logger.info(
+    {
       signal,
-    })}\n`,
+    },
+    'worker shutdown started',
   );
 
   try {
     await worker.close();
+
     redis.disconnect();
 
-    process.stdout.write(
-      `${JSON.stringify({
-        level: 'info',
-        service: 'worker',
-        message: 'worker shutdown completed',
-      })}\n`,
-    );
+    if (tracing) {
+      await tracing.shutdown();
+    }
+
+    logger.info('worker shutdown completed');
 
     process.exit(0);
   } catch (error) {
-    process.stderr.write(
-      `${JSON.stringify({
-        level: 'error',
-        service: 'worker',
-        message: 'worker shutdown failed',
-        error: error instanceof Error ? error.message : String(error),
-      })}\n`,
+    logger.error(
+      {
+        err: error,
+      },
+      'worker shutdown failed',
     );
 
     process.exit(1);

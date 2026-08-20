@@ -12,6 +12,11 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   REDIS_URL: z.string().url(),
+
+  OTEL_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

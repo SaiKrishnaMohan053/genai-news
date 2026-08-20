@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env --import tsx src/server.ts",
+    "dev": "node --env-file=.env --import tsx --import ./src/instrumentation.ts src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node --env-file=.env dist/server.js",
+    "start": "node --env-file=.env --import ./dist/instrumentation.js dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@genai-news/observability": "workspace:*",
     "@genai-news/queue": "workspace:*",
     "@genai-news/schemas": "workspace:*",
     "bullmq": "^6.1.2",

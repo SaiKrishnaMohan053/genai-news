@@ -18,6 +18,7 @@ describe('environment configuration', () => {
       LOG_LEVEL: 'info',
       DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
       REDIS_URL: 'redis://localhost:6379',
+      OTEL_ENABLED: false,
     });
   });
 
@@ -58,5 +59,14 @@ describe('environment configuration', () => {
         DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
       }),
     ).toThrow('Invalid environment configuration');
+  });
+
+  it('parses enabled telemetry', () => {
+    const env = loadEnv({
+      ...baseEnv,
+      OTEL_ENABLED: 'true',
+    });
+
+    expect(env.OTEL_ENABLED).toBe(true);
   });
 });

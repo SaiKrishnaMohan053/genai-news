@@ -2,15 +2,20 @@ import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createPrismaClient } from '@genai-news/database';
 import { createRedisClient } from '@genai-news/queue';
+import { createLogger } from '@genai-news/observability';
+import { tracing } from './instrumentation.js';
 
 const env = loadEnv();
+const logger = createLogger({
+  service: 'api',
+  environment: env.NODE_ENV,
+  level: env.LOG_LEVEL,
+});
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
 
 const app = buildApp({
-  logger: {
-    level: env.LOG_LEVEL,
-  },
+  logger,
   database,
   redis,
 });
@@ -56,6 +61,10 @@ async function shutdown(signal: string): Promise<void> {
     await database.$disconnect();
 
     redis.disconnect();
+
+    if (tracing) {
+      await tracing.shutdown();
+    }
 
     app.log.info('api shutdown completed');
 

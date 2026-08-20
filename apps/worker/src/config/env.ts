@@ -6,6 +6,11 @@ const envSchema = z.object({
   REDIS_URL: z.string().url(),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+
+  OTEL_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type WorkerEnv = z.infer<typeof envSchema>;
