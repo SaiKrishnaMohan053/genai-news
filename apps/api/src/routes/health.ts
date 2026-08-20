@@ -1,8 +1,10 @@
 import { checkDatabaseHealth, type DatabaseClient } from '@genai-news/database';
+import { checkRedisHealth, type RedisClient } from '@genai-news/queue';
 import type { FastifyPluginAsync } from 'fastify';
 
 interface HealthRouteOptions {
   database?: DatabaseClient;
+  redis?: RedisClient;
 }
 
 export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (app, options) => {
@@ -14,34 +16,33 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (app, 
   });
 
   app.get('/health/ready', async (_request, reply) => {
-    if (!options.database) {
+    const [databaseHealthy, redisHealthy] = await Promise.all([
+      options.database ? checkDatabaseHealth(options.database) : Promise.resolve(null),
+
+      options.redis ? checkRedisHealth(options.redis) : Promise.resolve(null),
+    ]);
+
+    const dependencies = {
+      database:
+        databaseHealthy === null ? 'unavailable' : databaseHealthy ? 'healthy' : 'unhealthy',
+
+      redis: redisHealthy === null ? 'unavailable' : redisHealthy ? 'healthy' : 'unhealthy',
+    } as const;
+
+    const ready = dependencies.database === 'healthy' && dependencies.redis === 'healthy';
+
+    if (!ready) {
       return reply.status(503).send({
         status: 'not_ready',
         service: 'api',
-        dependencies: {
-          database: 'unavailable',
-        },
-      });
-    }
-
-    const databaseHealthy = await checkDatabaseHealth(options.database);
-
-    if (!databaseHealthy) {
-      return reply.status(503).send({
-        status: 'not_ready',
-        service: 'api',
-        dependencies: {
-          database: 'unhealthy',
-        },
+        dependencies,
       });
     }
 
     return {
       status: 'ready',
       service: 'api',
-      dependencies: {
-        database: 'healthy',
-      },
+      dependencies,
     };
   });
 };

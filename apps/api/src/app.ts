@@ -3,10 +3,12 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';
 import type { DatabaseClient } from '@genai-news/database';
+import type { RedisClient } from '@genai-news/queue';
 
 export interface BuildAppOptions {
   logger?: FastifyServerOptions['logger'];
   database?: DatabaseClient;
+  redis?: RedisClient;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -14,14 +16,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     logger: options.logger ?? true,
   });
 
-  app.register(
-    healthRoutes,
-    options.database
-      ? {
-          database: options.database,
-        }
-      : {},
-  );
+  app.register(healthRoutes, {
+    ...(options.database ? { database: options.database } : {}),
+    ...(options.redis ? { redis: options.redis } : {}),
+  });
 
   app.setNotFoundHandler(async (request, reply) => {
     return reply.status(404).send({

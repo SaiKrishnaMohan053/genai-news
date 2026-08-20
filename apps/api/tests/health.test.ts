@@ -29,23 +29,6 @@ describe('health routes', () => {
     });
   });
 
-  it('returns not ready when database is unavailable', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/health/ready',
-    });
-
-    expect(response.statusCode).toBe(503);
-
-    expect(response.json()).toEqual({
-      status: 'not_ready',
-      service: 'api',
-      dependencies: {
-        database: 'unavailable',
-      },
-    });
-  });
-
   it('returns a structured 404 response', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -58,6 +41,24 @@ describe('health routes', () => {
       error: {
         code: 'NOT_FOUND',
         message: 'Route GET /does-not-exist not found',
+      },
+    });
+  });
+
+  it('returns not ready when dependencies are unavailable', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+
+    expect(response.statusCode).toBe(503);
+
+    expect(response.json()).toEqual({
+      status: 'not_ready',
+      service: 'api',
+      dependencies: {
+        database: 'unavailable',
+        redis: 'unavailable',
       },
     });
   });

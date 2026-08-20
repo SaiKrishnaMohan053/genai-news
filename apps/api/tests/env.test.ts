@@ -4,6 +4,7 @@ import { loadEnv } from '../src/config/env.js';
 
 const baseEnv = {
   DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
+  REDIS_URL: 'redis://localhost:6379',
 };
 
 describe('environment configuration', () => {
@@ -16,6 +17,7 @@ describe('environment configuration', () => {
       API_PORT: 3001,
       LOG_LEVEL: 'info',
       DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
+      REDIS_URL: 'redis://localhost:6379',
     });
   });
 
@@ -48,5 +50,13 @@ describe('environment configuration', () => {
 
   it('rejects a missing database URL', () => {
     expect(() => loadEnv({})).toThrow('Invalid environment configuration');
+  });
+
+  it('rejects a missing Redis URL', () => {
+    expect(() =>
+      loadEnv({
+        DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
+      }),
+    ).toThrow('Invalid environment configuration');
   });
 });

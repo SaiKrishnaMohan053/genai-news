@@ -22,7 +22,7 @@ services:
     image: redis:8
     container_name: genai-news-redis
     restart: unless-stopped
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
     ports:
       - '${REDIS_PORT}:6379'
     volumes:

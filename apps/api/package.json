@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@genai-news/database": "workspace:*",
+    "@genai-news/queue": "workspace:*",
     "fastify": "^5.12.0",
     "zod": "^4.4.3"
   },
