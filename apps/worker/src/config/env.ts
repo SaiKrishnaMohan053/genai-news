@@ -5,6 +5,10 @@ const envSchema = z.object({
 
   REDIS_URL: z.string().url(),
 
+  WORKER_HEALTH_HOST: z.string().min(1).default('0.0.0.0'),
+
+  WORKER_HEALTH_PORT: z.coerce.number().int().positive().max(65535).default(3002),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   OTEL_ENABLED: z

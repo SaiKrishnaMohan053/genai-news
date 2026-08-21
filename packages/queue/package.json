@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "smoke:enqueue": "pnpm build && node --env-file=.env dist/smoke-enqueue.js",
     "smoke:process": "pnpm build && node --env-file=.env dist/smoke-process.js"
   },
@@ -19,5 +20,8 @@
     "@genai-news/schemas": "workspace:*",
     "bullmq": "^6.1.2",
     "ioredis": "^6.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

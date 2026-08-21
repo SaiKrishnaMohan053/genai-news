@@ -1,4 +1,4 @@
-import pino, { type Logger } from 'pino';
+import pino, { type DestinationStream, type Logger } from 'pino';
 
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 
@@ -6,6 +6,7 @@ export interface CreateLoggerOptions {
   service: string;
   environment: string;
   level: LogLevel;
+  destination?: DestinationStream;
 }
 
 const REDACT_PATHS = [
@@ -22,8 +23,13 @@ const REDACT_PATHS = [
   'req.headers.cookie',
 ] as const;
 
-export function createLogger({ service, environment, level }: CreateLoggerOptions): Logger {
-  return pino({
+export function createLogger({
+  service,
+  environment,
+  level,
+  destination,
+}: CreateLoggerOptions): Logger {
+  const options = {
     level,
 
     base: {
@@ -39,7 +45,9 @@ export function createLogger({ service, environment, level }: CreateLoggerOption
     serializers: {
       err: pino.stdSerializers.err,
     },
-  });
+  };
+
+  return destination ? pino(options, destination) : pino(options);
 }
 
 export type AppLogger = Logger;

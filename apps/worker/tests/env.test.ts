@@ -11,6 +11,8 @@ describe('worker environment configuration', () => {
     expect(loadWorkerEnv(baseEnv)).toEqual({
       NODE_ENV: 'development',
       REDIS_URL: 'redis://localhost:6379',
+      WORKER_HEALTH_HOST: '0.0.0.0',
+      WORKER_HEALTH_PORT: 3002,
       LOG_LEVEL: 'info',
       OTEL_ENABLED: false,
     });
@@ -35,5 +37,14 @@ describe('worker environment configuration', () => {
     });
 
     expect(env.OTEL_ENABLED).toBe(true);
+  });
+
+  it('rejects invalid worker health port', () => {
+    expect(() =>
+      loadWorkerEnv({
+        ...baseEnv,
+        WORKER_HEALTH_PORT: '0',
+      }),
+    ).toThrow('Invalid worker environment configuration');
   });
 });

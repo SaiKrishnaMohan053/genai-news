@@ -1,9 +1,10 @@
 import { createLogger } from '@genai-news/observability';
-import { createWorkerRedisClient } from '@genai-news/queue';
+import { createRedisClient, createWorkerRedisClient } from '@genai-news/queue';
 
 import { loadWorkerEnv } from './config/env.js';
 import { createSystemWorker } from './worker.js';
 import { tracing } from './instrumentation.js';
+import { createWorkerHealthServer } from './health/server.js';
 
 const env = loadWorkerEnv();
 
@@ -13,9 +14,25 @@ const logger = createLogger({
   level: env.LOG_LEVEL,
 });
 
-const redis = createWorkerRedisClient(env.REDIS_URL);
+const workerRedis = createWorkerRedisClient(env.REDIS_URL);
 
-const worker = createSystemWorker(redis);
+const healthRedis = createRedisClient(env.REDIS_URL);
+
+const worker = createSystemWorker(workerRedis);
+
+const healthServer = createWorkerHealthServer({
+  redis: healthRedis,
+});
+
+healthServer.listen(env.WORKER_HEALTH_PORT, env.WORKER_HEALTH_HOST, () => {
+  logger.info(
+    {
+      host: env.WORKER_HEALTH_HOST,
+      port: env.WORKER_HEALTH_PORT,
+    },
+    'worker health server started',
+  );
+});
 
 worker.on('ready', () => {
   logger.info('worker ready');
@@ -70,7 +87,19 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await worker.close();
 
-    redis.disconnect();
+    await new Promise<void>((resolve, reject) => {
+      healthServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+
+    healthRedis.disconnect();
+    workerRedis.disconnect();
 
     if (tracing) {
       await tracing.shutdown();

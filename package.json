@@ -10,6 +10,8 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:integration": "pnpm --filter @genai-news/api test:integration && pnpm --filter @genai-news/worker test:integration",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "infra:up": "docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d",
