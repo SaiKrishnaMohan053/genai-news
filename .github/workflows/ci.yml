@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:18
+
+        env:
+          POSTGRES_USER: genai_news
+          POSTGRES_PASSWORD: genai_news_ci
+          POSTGRES_DB: genai_news
+
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd "pg_isready -U genai_news -d genai_news"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:8
+
+        ports:
+          - 6379:6379
+
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+
+      DATABASE_URL: postgresql://genai_news:genai_news_ci@localhost:5432/genai_news
+
+      REDIS_URL: redis://localhost:6379
+
+      LOG_LEVEL: info
+      OTEL_ENABLED: 'false'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Verify toolchain
+        run: |
+          node --version
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @genai-news/database db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm --filter @genai-news/database db:validate
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Apply database migrations
+        run: pnpm --filter @genai-news/database db:deploy
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+      - name: Build
+        run: pnpm build
