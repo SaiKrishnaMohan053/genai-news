@@ -96,6 +96,13 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Build workspace packages
+        run: |
+          pnpm --filter @genai-news/schemas build
+          pnpm --filter @genai-news/database build
+          pnpm --filter @genai-news/observability build
+          pnpm --filter @genai-news/queue build
+
       - name: Typecheck
         run: pnpm typecheck
 
