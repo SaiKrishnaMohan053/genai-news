@@ -5,9 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      '@genai-news/shared': fileURLToPath(
-        new URL('../shared/src/index.ts', import.meta.url),
-      ),
+      '@genai-news/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
     },
   },
 });
