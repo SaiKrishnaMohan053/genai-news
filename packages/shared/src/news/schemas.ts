@@ -41,3 +41,24 @@ export const sourceArticleSchema = z.object({
 export const newsSourceFetchInputSchema = z.object({
   limit: z.number().int().positive(),
 });
+
+export const normalizedArticleSchema = z.object({
+  title: z.string().min(1),
+
+  url: z.string().url(),
+  canonicalUrl: z.string().url(),
+
+  source: newsSourceDescriptorSchema,
+  publisher: articlePublisherSchema.nullable(),
+
+  externalId: z.string().nullable(),
+
+  publishedAt: z.date().nullable(),
+  discoveredAt: z.date(),
+
+  author: z.string().nullable(),
+  summary: z.string().nullable(),
+  category: z.string().nullable(),
+
+  metadata: z.record(z.string(), z.unknown()).nullable(),
+});
