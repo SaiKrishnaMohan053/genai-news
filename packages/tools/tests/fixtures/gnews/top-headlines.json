@@ -1,0 +1,36 @@
+{
+  "totalArticles": 2,
+  "articles": [
+    {
+      "id": "article-001",
+      "title": "Example technology headline",
+      "description": "An example description for the first article.",
+      "content": "Example truncated provider content.",
+      "url": "https://example.com/news/article-001",
+      "image": "https://example.com/images/article-001.jpg",
+      "publishedAt": "2026-08-24T15:00:00Z",
+      "lang": "en",
+      "source": {
+        "id": "publisher-001",
+        "name": "Example Publisher",
+        "url": "https://example.com",
+        "country": "us"
+      }
+    },
+    {
+      "id": "article-002",
+      "title": "Second example headline",
+      "description": null,
+      "content": null,
+      "url": "https://example.org/news/article-002",
+      "image": null,
+      "publishedAt": "2026-08-24T14:00:00Z",
+      "lang": "en",
+      "source": {
+        "id": "publisher-002",
+        "name": "Second Publisher",
+        "url": "https://example.org"
+      }
+    }
+  ]
+}
