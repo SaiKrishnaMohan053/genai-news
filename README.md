@@ -314,23 +314,23 @@ CI provisions PostgreSQL and Redis where required for integration validation.
 
 ## Technology Stack
 
-| Area | Technology |
-| --- | --- |
-| Monorepo | pnpm workspaces |
-| Language | TypeScript |
-| Runtime | Node.js 24 |
-| Frontend | Next.js |
-| API | Fastify |
-| Validation | Zod |
-| Database | PostgreSQL |
-| ORM | Prisma |
-| Cache / Queue Backend | Redis |
-| Background Jobs | BullMQ |
-| Logging | Pino |
-| Telemetry | OpenTelemetry |
-| Testing | Vitest |
-| Containers | Docker / Docker Compose |
-| CI | GitHub Actions |
+| Area                  | Technology              |
+| --------------------- | ----------------------- |
+| Monorepo              | pnpm workspaces         |
+| Language              | TypeScript              |
+| Runtime               | Node.js 24              |
+| Frontend              | Next.js                 |
+| API                   | Fastify                 |
+| Validation            | Zod                     |
+| Database              | PostgreSQL              |
+| ORM                   | Prisma                  |
+| Cache / Queue Backend | Redis                   |
+| Background Jobs       | BullMQ                  |
+| Logging               | Pino                    |
+| Telemetry             | OpenTelemetry           |
+| Testing               | Vitest                  |
+| Containers            | Docker / Docker Compose |
+| CI                    | GitHub Actions          |
 
 ---
 
