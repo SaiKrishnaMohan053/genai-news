@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom News</title>
+
+  <entry>
+    <id>atom-article-1</id>
+    <title>First Atom headline</title>
+    <link rel="alternate" href="https://example.org/articles/1" />
+    <published>2026-08-24T14:00:00Z</published>
+    <updated>2026-08-24T14:30:00Z</updated>
+    <summary>First Atom summary</summary>
+
+    <author>
+      <name>Atom Author</name>
+    </author>
+
+    <category term="World" />
+  </entry>
+
+  <entry>
+    <id>atom-article-2</id>
+    <title>Second Atom headline</title>
+    <link href="https://example.org/articles/2" />
+    <updated>2026-08-24T13:00:00Z</updated>
+  </entry>
+</feed>

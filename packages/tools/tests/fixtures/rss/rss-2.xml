@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Example News</title>
+    <link>https://example.com</link>
+    <description>Example feed</description>
+
+    <item>
+      <guid>rss-article-1</guid>
+      <title>First RSS headline</title>
+      <link>https://example.com/articles/1</link>
+      <description>First RSS summary</description>
+      <pubDate>Mon, 24 Aug 2026 15:00:00 GMT</pubDate>
+      <dc:creator>RSS Author</dc:creator>
+      <category>Technology</category>
+    </item>
+
+    <item>
+      <guid>rss-article-2</guid>
+      <title>Second RSS headline</title>
+      <link>https://example.com/articles/2</link>
+    </item>
+  </channel>
+</rss>

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@genai-news/shared": "workspace:*",
+    "fast-xml-parser": "5.11.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
