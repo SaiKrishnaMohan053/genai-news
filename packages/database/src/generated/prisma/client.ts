@@ -46,3 +46,8 @@ export { Prisma }
  * 
  */
 export type SystemRecord = Prisma.SystemRecordModel
+/**
+ * Model Article
+ * 
+ */
+export type Article = Prisma.ArticleModel

@@ -16,3 +16,38 @@ model SystemRecord {
 
   @@map("system_records")
 }
+
+model Article {
+  id           String @id @default(cuid())
+
+  title        String
+  url          String
+  canonicalUrl String @unique
+
+  sourceId     String
+  sourceName   String
+  sourceType   String
+
+  publisherId   String?
+  publisherName String?
+
+  externalId String?
+
+  publishedAt      DateTime?
+  firstDiscoveredAt DateTime
+  lastSeenAt        DateTime
+
+  author   String?
+  summary  String?
+  category String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceId, externalId])
+  @@index([publishedAt])
+  @@index([lastSeenAt])
+  @@map("articles")
+}

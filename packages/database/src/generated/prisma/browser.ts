@@ -22,3 +22,8 @@ export * from './enums.js';
  * 
  */
 export type SystemRecord = Prisma.SystemRecordModel
+/**
+ * Model Article
+ * 
+ */
+export type Article = Prisma.ArticleModel
