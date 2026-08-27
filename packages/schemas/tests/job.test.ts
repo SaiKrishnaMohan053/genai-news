@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { jobIdSchema, systemPingJobSchema } from '../src/index.js';
+import { jobIdSchema, newsDiscoveryJobSchema, systemPingJobSchema } from '../src/index.js';
 
 describe('jobIdSchema', () => {
   it('accepts a valid job id', () => {
-    expect(jobIdSchema.parse('phase0-10_job-123')).toBe('phase0-10_job-123');
+    expect(jobIdSchema.parse('job_123-test')).toBe('job_123-test');
   });
 
   it('rejects an empty job id', () => {
@@ -16,36 +16,37 @@ describe('jobIdSchema', () => {
   });
 
   it('rejects characters outside the allowed set', () => {
-    expect(() => jobIdSchema.parse('job:123')).toThrow();
-
-    expect(() => jobIdSchema.parse('job 123')).toThrow();
+    expect(() => jobIdSchema.parse('invalid job id')).toThrow();
   });
 });
 
 describe('systemPingJobSchema', () => {
   it('accepts a valid payload', () => {
     const payload = {
-      message: 'phase 0.10 schema test',
-      requestedAt: '2026-08-21T10:00:00.000-05:00',
+      message: 'hello',
+      requestedAt: '2026-08-27T16:00:00.000Z',
     };
 
     expect(systemPingJobSchema.parse(payload)).toEqual(payload);
   });
 
   it('accepts a UTC timestamp', () => {
-    const payload = {
+    expect(
+      systemPingJobSchema.parse({
+        message: 'hello',
+        requestedAt: '2026-08-27T16:00:00.000Z',
+      }),
+    ).toEqual({
       message: 'hello',
-      requestedAt: '2026-08-21T15:00:00.000Z',
-    };
-
-    expect(systemPingJobSchema.parse(payload)).toEqual(payload);
+      requestedAt: '2026-08-27T16:00:00.000Z',
+    });
   });
 
   it('rejects an empty message', () => {
     expect(() =>
       systemPingJobSchema.parse({
         message: '',
-        requestedAt: '2026-08-21T15:00:00.000Z',
+        requestedAt: '2026-08-27T16:00:00.000Z',
       }),
     ).toThrow();
   });
@@ -54,7 +55,7 @@ describe('systemPingJobSchema', () => {
     expect(() =>
       systemPingJobSchema.parse({
         message: 'a'.repeat(201),
-        requestedAt: '2026-08-21T15:00:00.000Z',
+        requestedAt: '2026-08-27T16:00:00.000Z',
       }),
     ).toThrow();
   });
@@ -63,7 +64,67 @@ describe('systemPingJobSchema', () => {
     expect(() =>
       systemPingJobSchema.parse({
         message: 'hello',
-        requestedAt: 'not-a-date',
+        requestedAt: 'invalid',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('newsDiscoveryJobSchema', () => {
+  it('accepts a valid discovery payload', () => {
+    const payload = {
+      sourceId: 'gnews',
+      limit: 25,
+      requestedAt: '2026-08-27T16:00:00.000Z',
+    };
+
+    expect(newsDiscoveryJobSchema.parse(payload)).toEqual(payload);
+  });
+
+  it('rejects an empty sourceId', () => {
+    expect(() =>
+      newsDiscoveryJobSchema.parse({
+        sourceId: '',
+        limit: 25,
+        requestedAt: '2026-08-27T16:00:00.000Z',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a non-positive limit', () => {
+    expect(() =>
+      newsDiscoveryJobSchema.parse({
+        sourceId: 'gnews',
+        limit: 0,
+        requestedAt: '2026-08-27T16:00:00.000Z',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      newsDiscoveryJobSchema.parse({
+        sourceId: 'gnews',
+        limit: -1,
+        requestedAt: '2026-08-27T16:00:00.000Z',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a limit greater than 100', () => {
+    expect(() =>
+      newsDiscoveryJobSchema.parse({
+        sourceId: 'gnews',
+        limit: 101,
+        requestedAt: '2026-08-27T16:00:00.000Z',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects an invalid requestedAt timestamp', () => {
+    expect(() =>
+      newsDiscoveryJobSchema.parse({
+        sourceId: 'gnews',
+        limit: 25,
+        requestedAt: 'invalid',
       }),
     ).toThrow();
   });

@@ -68,6 +68,11 @@ services:
 
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
 
+      GNEWS_API_KEY: ${GNEWS_API_KEY}
+
+      NEWS_FRESHNESS_HOURS: ${NEWS_FRESHNESS_HOURS:-24}
+      NEWS_MAX_FUTURE_SKEW_MINUTES: ${NEWS_MAX_FUTURE_SKEW_MINUTES:-5}
+
       REDIS_URL: redis://redis:6379
 
       LOG_LEVEL: ${LOG_LEVEL}
@@ -103,6 +108,13 @@ services:
 
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+
+      GNEWS_API_KEY: ${GNEWS_API_KEY}
+
+      NEWS_FRESHNESS_HOURS: ${NEWS_FRESHNESS_HOURS:-24}
+      NEWS_MAX_FUTURE_SKEW_MINUTES: ${NEWS_MAX_FUTURE_SKEW_MINUTES:-5}
+
       REDIS_URL: redis://redis:6379
 
       WORKER_HEALTH_HOST: 0.0.0.0
@@ -115,6 +127,9 @@ services:
       - '${WORKER_HEALTH_PORT}:3002'
 
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+
       redis:
         condition: service_healthy
 

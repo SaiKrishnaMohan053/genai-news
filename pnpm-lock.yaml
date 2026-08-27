@@ -82,6 +82,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@genai-news/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@genai-news/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -91,6 +94,12 @@ importers:
       '@genai-news/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
+      '@genai-news/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@genai-news/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
       bullmq:
         specifier: ^6.1.2
         version: 6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)

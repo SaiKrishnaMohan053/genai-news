@@ -9,3 +9,10 @@ export {
   SYSTEM_PING_JOB_NAME,
   SYSTEM_QUEUE_NAME,
 } from './system-queue.js';
+
+export {
+  createNewsDiscoveryQueue,
+  enqueueNewsDiscovery,
+  NEWS_DISCOVERY_JOB_NAME,
+  NEWS_DISCOVERY_QUEUE_NAME,
+} from './news-discovery-queue.js';

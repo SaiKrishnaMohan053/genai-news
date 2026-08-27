@@ -15,6 +15,14 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+
+  DATABASE_URL: z.string().url(),
+
+  GNEWS_API_KEY: z.string().trim().min(1),
+
+  NEWS_FRESHNESS_HOURS: z.coerce.number().positive().default(24),
+
+  NEWS_MAX_FUTURE_SKEW_MINUTES: z.coerce.number().nonnegative().default(5),
 });
 
 export type WorkerEnv = z.infer<typeof envSchema>;

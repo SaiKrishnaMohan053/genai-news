@@ -1,0 +1,272 @@
+import type { NewsSource, NewsSourceResult, NormalizedArticle } from '@genai-news/shared';
+import { describe, expect, it, vi } from 'vitest';
+
+import { processNewsDiscovery } from '../src/jobs/news-discovery.js';
+import type { NewsSourceRegistry } from '../src/news/source-registry.js';
+
+const now = new Date('2026-08-27T16:00:00.000Z');
+
+function createSourceResult(): NewsSourceResult {
+  return {
+    source: {
+      id: 'gnews',
+      name: 'GNews',
+      type: 'api',
+    },
+
+    fetchedAt: new Date('2026-08-27T15:59:00.000Z'),
+
+    articles: [
+      {
+        externalId: '1',
+        title: 'Fresh article',
+        url: 'https://example.com/fresh',
+        publishedAt: '2026-08-27T15:00:00.000Z',
+        publisher: {
+          name: 'Publisher A',
+        },
+      },
+
+      {
+        externalId: '2',
+        title: 'Old article',
+        url: 'https://example.com/old',
+        publishedAt: '2026-08-20T15:00:00.000Z',
+        publisher: {
+          name: 'Publisher A',
+        },
+      },
+
+      {
+        externalId: '3',
+        title: '   ',
+        url: 'https://example.com/invalid',
+        publishedAt: '2026-08-27T15:00:00.000Z',
+      },
+
+      {
+        externalId: '4',
+        title: 'Fresh article',
+        url: 'https://example.com/duplicate',
+        publishedAt: '2026-08-27T15:00:00.000Z',
+        publisher: {
+          name: 'Publisher A',
+        },
+      },
+    ],
+  };
+}
+
+function createRegistry(result: NewsSourceResult): NewsSourceRegistry {
+  const source: NewsSource = {
+    id: 'gnews',
+    name: 'GNews',
+    type: 'api',
+
+    fetchLatest: vi.fn(async () => result),
+  };
+
+  return {
+    get(sourceId: string) {
+      if (sourceId !== 'gnews') {
+        throw new Error(`Unsupported news source: ${sourceId}`);
+      }
+
+      return source;
+    },
+  };
+}
+
+describe('processNewsDiscovery', () => {
+  it('runs fetch, normalization, freshness, deduplication, and persistence', async () => {
+    const result = createSourceResult();
+
+    const persisted: NormalizedArticle[] = [];
+
+    const output = await processNewsDiscovery(
+      {
+        sourceId: 'gnews',
+        limit: 10,
+        requestedAt: '2026-08-27T15:58:00.000Z',
+      },
+      {
+        sourceRegistry: createRegistry(result),
+
+        articleRepository: {
+          async persist(article) {
+            persisted.push(article);
+
+            return {
+              id: `persisted-${persisted.length}`,
+
+              title: article.title,
+              url: article.url,
+              canonicalUrl: article.canonicalUrl,
+
+              sourceId: article.source.id,
+              sourceName: article.source.name,
+              sourceType: article.source.type,
+
+              publisherId: article.publisher?.id ?? null,
+              publisherName: article.publisher?.name ?? null,
+
+              externalId: article.externalId,
+
+              publishedAt: article.publishedAt,
+              firstDiscoveredAt: article.discoveredAt,
+              lastSeenAt: article.discoveredAt,
+
+              author: article.author,
+              summary: article.summary,
+              category: article.category,
+
+              metadata: article.metadata,
+
+              createdAt: now,
+              updatedAt: now,
+            };
+          },
+
+          async findByCanonicalUrl() {
+            return null;
+          },
+        },
+
+        freshnessPolicy: {
+          maxAgeMs: 24 * 60 * 60 * 1000,
+          maxFutureSkewMs: 5 * 60 * 1000,
+          missingPublishedAt: 'reject',
+        },
+
+        now: () => now,
+      },
+    );
+
+    expect(output).toEqual({
+      sourceId: 'gnews',
+
+      fetchedCount: 4,
+
+      normalizedCount: 3,
+      normalizationRejectedCount: 1,
+
+      freshCount: 2,
+      freshnessRejectedCount: 1,
+
+      uniqueCount: 1,
+      duplicateCount: 1,
+
+      persistedCount: 1,
+
+      requestedAt: '2026-08-27T15:58:00.000Z',
+      completedAt: '2026-08-27T16:00:00.000Z',
+    });
+
+    expect(persisted).toHaveLength(1);
+
+    expect(persisted[0]?.title).toBe('Fresh article');
+  });
+
+  it('rejects an unsupported source', async () => {
+    await expect(
+      processNewsDiscovery(
+        {
+          sourceId: 'unknown',
+          limit: 10,
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+        {
+          sourceRegistry: createRegistry(createSourceResult()),
+
+          articleRepository: {
+            persist: vi.fn(),
+            findByCanonicalUrl: vi.fn(),
+          },
+
+          freshnessPolicy: {
+            maxAgeMs: 24 * 60 * 60 * 1000,
+            maxFutureSkewMs: 5 * 60 * 1000,
+            missingPublishedAt: 'reject',
+          },
+
+          now: () => now,
+        },
+      ),
+    ).rejects.toThrow('Unsupported news source: unknown');
+  });
+
+  it('rejects an invalid discovery payload', async () => {
+    await expect(
+      processNewsDiscovery(
+        {
+          sourceId: '',
+          limit: 0,
+          requestedAt: 'invalid',
+        },
+        {
+          sourceRegistry: createRegistry(createSourceResult()),
+
+          articleRepository: {
+            persist: vi.fn(),
+            findByCanonicalUrl: vi.fn(),
+          },
+
+          freshnessPolicy: {
+            maxAgeMs: 24 * 60 * 60 * 1000,
+            maxFutureSkewMs: 5 * 60 * 1000,
+            missingPublishedAt: 'reject',
+          },
+
+          now: () => now,
+        },
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('does not persist stale articles', async () => {
+    const persist = vi.fn();
+
+    await processNewsDiscovery(
+      {
+        sourceId: 'gnews',
+        limit: 10,
+        requestedAt: '2026-08-27T15:58:00.000Z',
+      },
+      {
+        sourceRegistry: createRegistry({
+          source: {
+            id: 'gnews',
+            name: 'GNews',
+            type: 'api',
+          },
+
+          fetchedAt: new Date('2026-08-27T15:59:00.000Z'),
+
+          articles: [
+            {
+              title: 'Old article',
+              url: 'https://example.com/old',
+              publishedAt: '2026-08-20T15:00:00.000Z',
+            },
+          ],
+        }),
+
+        articleRepository: {
+          persist,
+
+          findByCanonicalUrl: vi.fn(),
+        },
+
+        freshnessPolicy: {
+          maxAgeMs: 24 * 60 * 60 * 1000,
+          maxFutureSkewMs: 5 * 60 * 1000,
+          missingPublishedAt: 'reject',
+        },
+
+        now: () => now,
+      },
+    );
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+});

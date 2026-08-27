@@ -1,3 +1,9 @@
 export type RuntimeService = 'web' | 'api' | 'worker';
 
-export { jobIdSchema, systemPingJobSchema, type SystemPingJobPayload } from './jobs.js';
+export {
+  jobIdSchema,
+  newsDiscoveryJobSchema,
+  systemPingJobSchema,
+  type NewsDiscoveryJobPayload,
+  type SystemPingJobPayload,
+} from './jobs.js';
