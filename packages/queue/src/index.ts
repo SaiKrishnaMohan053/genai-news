@@ -15,4 +15,5 @@ export {
   enqueueNewsDiscovery,
   NEWS_DISCOVERY_JOB_NAME,
   NEWS_DISCOVERY_QUEUE_NAME,
+  type NewsDiscoveryQueue,
 } from './news-discovery-queue.js';

@@ -10,14 +10,16 @@ import type { RedisClient } from './redis.js';
 export const NEWS_DISCOVERY_QUEUE_NAME = 'news-discovery';
 export const NEWS_DISCOVERY_JOB_NAME = 'news.discovery';
 
-export function createNewsDiscoveryQueue(connection: RedisClient): Queue<NewsDiscoveryJobPayload> {
+export type NewsDiscoveryQueue = Queue<NewsDiscoveryJobPayload>;
+
+export function createNewsDiscoveryQueue(connection: RedisClient): NewsDiscoveryQueue {
   return new Queue<NewsDiscoveryJobPayload>(NEWS_DISCOVERY_QUEUE_NAME, {
     connection,
   });
 }
 
 export async function enqueueNewsDiscovery(
-  queue: Queue<NewsDiscoveryJobPayload>,
+  queue: NewsDiscoveryQueue,
   payload: NewsDiscoveryJobPayload,
   jobId: string,
 ) {

@@ -1,7 +1,7 @@
 import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createPrismaClient } from '@genai-news/database';
-import { createRedisClient } from '@genai-news/queue';
+import { createNewsDiscoveryQueue, createRedisClient } from '@genai-news/queue';
 import { createLogger } from '@genai-news/observability';
 import { tracing } from './instrumentation.js';
 
@@ -13,11 +13,13 @@ const logger = createLogger({
 });
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
+const newsDiscoveryQueue = createNewsDiscoveryQueue(redis);
 
 const app = buildApp({
   logger,
   database,
   redis,
+  newsDiscoveryQueue,
 });
 
 async function start(): Promise<void> {
@@ -57,6 +59,8 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await app.close();
+
+    await newsDiscoveryQueue.close();
 
     await database.$disconnect();
 

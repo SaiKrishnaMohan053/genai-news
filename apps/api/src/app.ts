@@ -3,12 +3,19 @@ import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';
 import type { DatabaseClient } from '@genai-news/database';
-import type { RedisClient } from '@genai-news/queue';
+import type { NewsDiscoveryQueue, RedisClient } from '@genai-news/queue';
+
+import { newsDiscoveryRoutes } from './routes/news-discovery.js';
 
 export interface BuildAppOptions {
   logger?: FastifyBaseLogger | false;
   database?: DatabaseClient;
   redis?: RedisClient;
+
+  newsDiscoveryQueue?: NewsDiscoveryQueue;
+
+  now?: () => Date;
+  createJobId?: () => string;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -28,6 +35,26 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(healthRoutes, {
     ...(options.database ? { database: options.database } : {}),
     ...(options.redis ? { redis: options.redis } : {}),
+  });
+
+  app.register(newsDiscoveryRoutes, {
+    ...(options.newsDiscoveryQueue
+      ? {
+          queue: options.newsDiscoveryQueue,
+        }
+      : {}),
+
+    ...(options.now
+      ? {
+          now: options.now,
+        }
+      : {}),
+
+    ...(options.createJobId
+      ? {
+          createJobId: options.createJobId,
+        }
+      : {}),
   });
 
   app.setNotFoundHandler(async (request, reply) => {
