@@ -1,15 +1,23 @@
+import { InspectionPanel } from './inspection-panel';
+
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
-      <section className="max-w-2xl text-center">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-500">
-          Phase 0
-        </p>
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl px-6 py-10 sm:py-14">
+        <header className="mb-10">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Phase 1</p>
 
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">GenAI News</h1>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
+            GenAI News
+          </h1>
 
-        <p className="mt-6 text-lg leading-8 text-slate-600">Frontend foundation is running.</p>
-      </section>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+            Minimal inspection surface for the news ingestion pipeline.
+          </p>
+        </header>
+
+        <InspectionPanel />
+      </div>
     </main>
   );
 }

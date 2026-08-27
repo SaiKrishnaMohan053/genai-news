@@ -254,6 +254,75 @@ describe('article repository integration', () => {
       ),
     ).rejects.toThrow('Article discoveredAt must be a valid Date.');
   });
+
+  it('lists recently published articles newest first', async () => {
+    const repository = createArticleRepository(database);
+
+    await repository.persist(
+      createArticle({
+        canonicalUrl: 'https://example.com/older',
+        url: 'https://example.com/older',
+        externalId: 'older',
+        publishedAt: new Date('2026-08-27T12:00:00.000Z'),
+      }),
+    );
+
+    await repository.persist(
+      createArticle({
+        canonicalUrl: 'https://example.com/newer',
+        url: 'https://example.com/newer',
+        externalId: 'newer',
+        publishedAt: new Date('2026-08-27T14:00:00.000Z'),
+      }),
+    );
+
+    const articles = await repository.listRecent({
+      limit: 10,
+    });
+
+    expect(articles.map((article) => article.canonicalUrl)).toEqual([
+      'https://example.com/newer',
+      'https://example.com/older',
+    ]);
+  });
+
+  it('respects the recent article limit', async () => {
+    const repository = createArticleRepository(database);
+
+    await Promise.all([
+      repository.persist(
+        createArticle({
+          canonicalUrl: 'https://example.com/1',
+          url: 'https://example.com/1',
+          externalId: '1',
+        }),
+      ),
+
+      repository.persist(
+        createArticle({
+          canonicalUrl: 'https://example.com/2',
+          url: 'https://example.com/2',
+          externalId: '2',
+        }),
+      ),
+    ]);
+
+    const articles = await repository.listRecent({
+      limit: 1,
+    });
+
+    expect(articles).toHaveLength(1);
+  });
+
+  it('rejects an invalid recent article limit', async () => {
+    const repository = createArticleRepository(database);
+
+    await expect(
+      repository.listRecent({
+        limit: 0,
+      }),
+    ).rejects.toThrow('Article list limit must be an integer between 1 and 100.');
+  });
 });
 
 function createArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedArticle {

@@ -34,10 +34,15 @@ export type PersistedArticle = {
   updatedAt: Date;
 };
 
+export type ListRecentArticlesInput = {
+  limit: number;
+};
 export type ArticleRepository = {
   persist(article: NormalizedArticle): Promise<PersistedArticle>;
 
   findByCanonicalUrl(canonicalUrl: string): Promise<PersistedArticle | null>;
+
+  listRecent(input: ListRecentArticlesInput): Promise<PersistedArticle[]>;
 };
 
 export function createArticleRepository(database: DatabaseClient): ArticleRepository {
@@ -218,6 +223,30 @@ export function createArticleRepository(database: DatabaseClient): ArticleReposi
         where: {
           canonicalUrl,
         },
+      });
+    },
+    async listRecent(input: ListRecentArticlesInput): Promise<PersistedArticle[]> {
+      if (!Number.isInteger(input.limit) || input.limit <= 0 || input.limit > 100) {
+        throw new Error('Article list limit must be an integer between 1 and 100.');
+      }
+
+      return database.article.findMany({
+        take: input.limit,
+
+        orderBy: [
+          {
+            publishedAt: {
+              sort: 'desc',
+              nulls: 'last',
+            },
+          },
+          {
+            lastSeenAt: 'desc',
+          },
+          {
+            id: 'asc',
+          },
+        ],
       });
     },
   };

@@ -6,6 +6,7 @@ import type { DatabaseClient } from '@genai-news/database';
 import type { NewsDiscoveryQueue, RedisClient } from '@genai-news/queue';
 
 import { newsDiscoveryRoutes } from './routes/news-discovery.js';
+import { newsArticleRoutes } from './routes/news-articles.js';
 
 export interface BuildAppOptions {
   logger?: FastifyBaseLogger | false;
@@ -35,6 +36,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(healthRoutes, {
     ...(options.database ? { database: options.database } : {}),
     ...(options.redis ? { redis: options.redis } : {}),
+  });
+
+  app.register(newsArticleRoutes, {
+    ...(options.database
+      ? {
+          database: options.database,
+        }
+      : {}),
   });
 
   app.register(newsDiscoveryRoutes, {
