@@ -1,19 +1,34 @@
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyInstance,
+} from 'fastify';
+
+import type { DatabaseClient } from '@genai-news/database';
+import type {
+  AppMetricsRegistry,
+  NewsDiscoveryMetrics,
+} from '@genai-news/observability';
+import type {
+  NewsDiscoveryQueue,
+  RedisClient,
+} from '@genai-news/queue';
 
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';
-import type { DatabaseClient } from '@genai-news/database';
-import type { NewsDiscoveryQueue, RedisClient } from '@genai-news/queue';
-
-import { newsDiscoveryRoutes } from './routes/news-discovery.js';
+import { metricsRoutes } from './routes/metrics.js';
 import { newsArticleRoutes } from './routes/news-articles.js';
+import { newsDiscoveryRoutes } from './routes/news-discovery.js';
 
 export interface BuildAppOptions {
   logger?: FastifyBaseLogger | false;
+
   database?: DatabaseClient;
   redis?: RedisClient;
 
+  metricsRegistry?: AppMetricsRegistry;
+
   newsDiscoveryQueue?: NewsDiscoveryQueue;
+  newsDiscoveryMetrics?: NewsDiscoveryMetrics;
 
   now?: () => Date;
   createJobId?: () => string;
@@ -38,6 +53,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ...(options.redis ? { redis: options.redis } : {}),
   });
 
+  if (options.metricsRegistry) {
+    app.register(metricsRoutes, {
+      metrics: options.metricsRegistry,
+    });
+  }
+
   app.register(newsArticleRoutes, {
     ...(options.database
       ? {
@@ -50,6 +71,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ...(options.newsDiscoveryQueue
       ? {
           queue: options.newsDiscoveryQueue,
+        }
+      : {}),
+
+    ...(options.newsDiscoveryMetrics
+      ? {
+          metrics: options.newsDiscoveryMetrics,
         }
       : {}),
 

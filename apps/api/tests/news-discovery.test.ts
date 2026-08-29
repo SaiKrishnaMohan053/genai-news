@@ -1,6 +1,10 @@
 import type { NewsDiscoveryQueue } from '@genai-news/queue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  createMetricsRegistry,
+  createNewsDiscoveryMetrics,
+} from '@genai-news/observability';
 import { buildApp } from '../src/app.js';
 
 function createQueueMock(): NewsDiscoveryQueue {
@@ -11,6 +15,27 @@ function createQueueMock(): NewsDiscoveryQueue {
     }),
   } as unknown as NewsDiscoveryQueue;
 }
+function createTestMetrics() {
+  const registry = createMetricsRegistry({
+    service: 'api',
+    environment: 'test',
+    collectDefaults: false,
+  });
+
+  return {
+    registry,
+    metrics: createNewsDiscoveryMetrics(registry),
+  };
+}
+function createFailingQueueMock(): NewsDiscoveryQueue {
+  return {
+    add: vi
+      .fn()
+      .mockRejectedValue(
+        new Error('redis unavailable'),
+      ),
+  } as unknown as NewsDiscoveryQueue;
+}
 
 describe('news discovery route', () => {
   afterEach(() => {
@@ -19,11 +44,13 @@ describe('news discovery route', () => {
 
   it('accepts a valid request and enqueues discovery', async () => {
     const queue = createQueueMock();
+    const { registry, metrics } = createTestMetrics();
 
     const app = buildApp({
       logger: false,
 
       newsDiscoveryQueue: queue,
+      newsDiscoveryMetrics: metrics,
 
       now: () => new Date('2026-08-27T16:00:00.000Z'),
 
@@ -40,6 +67,20 @@ describe('news discovery route', () => {
           limit: 25,
         },
       });
+
+      const output = await registry.metrics();
+
+      expect(output).toContain(
+        'genai_news_discovery_enqueue_total',
+      );
+
+      expect(output).toContain(
+        'source_id="gnews"',
+      );
+
+      expect(output).toContain(
+        'status="accepted"',
+      );
 
       expect(response.statusCode).toBe(202);
 
@@ -78,6 +119,13 @@ describe('news discovery route', () => {
 
   it('rejects an unsupported source', async () => {
     const queue = createQueueMock();
+    function createFailingQueueMock(): NewsDiscoveryQueue {
+      return {
+        add: vi.fn().mockRejectedValue(
+          new Error('redis unavailable'),
+        ),
+      } as unknown as NewsDiscoveryQueue;
+    }
 
     const app = buildApp({
       logger: false,
@@ -105,6 +153,62 @@ describe('news discovery route', () => {
       });
 
       expect(queue.add).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('records a failed enqueue when the queue rejects', async () => {
+    const queue = createFailingQueueMock();
+
+    const { registry, metrics } = createTestMetrics();
+
+    const app = buildApp({
+      logger: false,
+
+      newsDiscoveryQueue: queue,
+      newsDiscoveryMetrics: metrics,
+
+      now: () => new Date('2026-08-27T16:00:00.000Z'),
+
+      createJobId: () => 'discovery-failed-job',
+    });
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/news/discover',
+
+        payload: {
+          sourceId: 'gnews',
+          limit: 25,
+        },
+      });
+
+      expect(response.statusCode).toBe(500);
+
+      expect(response.json()).toEqual({
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Internal server error',
+        },
+      });
+
+      const output = await registry.metrics();
+
+      expect(output).toContain(
+        'genai_news_discovery_enqueue_total',
+      );
+
+      expect(output).toContain(
+        'source_id="gnews"',
+      );
+
+      expect(output).toContain(
+        'status="failed"',
+      );
+
+      expect(queue.add).toHaveBeenCalledOnce();
     } finally {
       await app.close();
     }

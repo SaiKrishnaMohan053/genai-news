@@ -1,4 +1,4 @@
-import { SpanStatusCode, trace, type Attributes } from '@opentelemetry/api';
+import { SpanStatusCode, trace, type Attributes, type Span } from '@opentelemetry/api';
 
 export interface RunWithSpanOptions {
   tracerName: string;
@@ -8,7 +8,7 @@ export interface RunWithSpanOptions {
 
 export async function runWithSpan<T>(
   options: RunWithSpanOptions,
-  operation: () => Promise<T>,
+  operation: (span: Span) => Promise<T>,
 ): Promise<T> {
   const tracer = trace.getTracer(options.tracerName);
 
@@ -18,7 +18,7 @@ export async function runWithSpan<T>(
         span.setAttributes(options.attributes);
       }
 
-      const result = await operation();
+      const result = await operation(span);
 
       span.setStatus({
         code: SpanStatusCode.OK,

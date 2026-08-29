@@ -2,7 +2,11 @@ import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createPrismaClient } from '@genai-news/database';
 import { createNewsDiscoveryQueue, createRedisClient } from '@genai-news/queue';
-import { createLogger } from '@genai-news/observability';
+import {
+  createLogger,
+  createMetricsRegistry,
+  createNewsDiscoveryMetrics,
+} from '@genai-news/observability';
 import { tracing } from './instrumentation.js';
 
 const env = loadEnv();
@@ -11,6 +15,13 @@ const logger = createLogger({
   environment: env.NODE_ENV,
   level: env.LOG_LEVEL,
 });
+const metricsRegistry = createMetricsRegistry({
+  service: 'api',
+  environment: env.NODE_ENV,
+});
+
+const newsDiscoveryMetrics =
+  createNewsDiscoveryMetrics(metricsRegistry);
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
 const newsDiscoveryQueue = createNewsDiscoveryQueue(redis);
@@ -19,7 +30,9 @@ const app = buildApp({
   logger,
   database,
   redis,
+  metricsRegistry,
   newsDiscoveryQueue,
+  newsDiscoveryMetrics,
 });
 
 async function start(): Promise<void> {

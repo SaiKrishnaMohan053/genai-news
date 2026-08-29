@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { processNewsDiscovery } from '../src/jobs/news-discovery.js';
 import type { NewsSourceRegistry } from '../src/news/source-registry.js';
+import {
+  createMetricsRegistry,
+  createNewsDiscoveryMetrics,
+} from '@genai-news/observability';
 
 const now = new Date('2026-08-27T16:00:00.000Z');
 
@@ -78,6 +82,123 @@ function createRegistry(result: NewsSourceResult): NewsSourceRegistry {
 }
 
 describe('processNewsDiscovery', () => {
+  it('records discovery stage metrics', async () => {
+    const result = createSourceResult();
+
+    const registry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createNewsDiscoveryMetrics(registry);
+
+    await processNewsDiscovery(
+      {
+        sourceId: 'gnews',
+        limit: 10,
+        requestedAt: '2026-08-27T15:58:00.000Z',
+      },
+      {
+        sourceRegistry: createRegistry(result),
+
+        articleRepository: {
+          async persist(article) {
+            return {
+              id: 'persisted-1',
+
+              title: article.title,
+              url: article.url,
+              canonicalUrl: article.canonicalUrl,
+
+              sourceId: article.source.id,
+              sourceName: article.source.name,
+              sourceType: article.source.type,
+
+              publisherId: article.publisher?.id ?? null,
+              publisherName: article.publisher?.name ?? null,
+
+              externalId: article.externalId,
+
+              publishedAt: article.publishedAt,
+              firstDiscoveredAt: article.discoveredAt,
+              lastSeenAt: article.discoveredAt,
+
+              author: article.author,
+              summary: article.summary,
+              category: article.category,
+
+              metadata: article.metadata,
+
+              createdAt: now,
+              updatedAt: now,
+            };
+          },
+
+          async findByCanonicalUrl() {
+            return null;
+          },
+        },
+
+        freshnessPolicy: {
+          maxAgeMs: 24 * 60 * 60 * 1000,
+          maxFutureSkewMs: 5 * 60 * 1000,
+          missingPublishedAt: 'reject',
+        },
+
+        metrics,
+
+        now: () => now,
+      },
+    );
+
+    const output = await registry.metrics();
+
+    expect(output).toContain(
+      'genai_news_articles_fetched_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_normalized_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_normalization_rejected_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_fresh_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_freshness_rejected_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_unique_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_duplicates_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_articles_persisted_total',
+    );
+
+    expect(output).toContain(
+      'genai_news_source_fetch_duration_seconds',
+    );
+
+    expect(output).toContain(
+      'genai_news_persistence_duration_seconds',
+    );
+
+    expect(output).toContain(
+      'source_id="gnews"',
+    );
+  });
+
   it('runs fetch, normalization, freshness, deduplication, and persistence', async () => {
     const result = createSourceResult();
 

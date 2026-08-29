@@ -109,4 +109,44 @@ describe('runWithSpan', () => {
 
     expect(end).toHaveBeenCalledOnce();
   });
+
+  it('allows the operation to add runtime span attributes', async () => {
+    const setAttribute = vi.fn();
+
+    const spanWithAttribute = {
+      ...span,
+      setAttribute,
+    };
+
+    vi.spyOn(trace, 'getTracer').mockReturnValue({
+      startActiveSpan: vi.fn(
+        async (
+          _name: string,
+          callback: (
+            activeSpan: typeof spanWithAttribute,
+          ) => Promise<unknown>,
+        ) => callback(spanWithAttribute),
+      ),
+    } as never);
+
+    await runWithSpan(
+      {
+        tracerName: 'test',
+        spanName: 'operation',
+      },
+      async (activeSpan) => {
+        activeSpan.setAttribute(
+          'news.fetched_count',
+          10,
+        );
+
+        return 'result';
+      },
+    );
+
+    expect(setAttribute).toHaveBeenCalledWith(
+      'news.fetched_count',
+      10,
+    );
+  });
 });
