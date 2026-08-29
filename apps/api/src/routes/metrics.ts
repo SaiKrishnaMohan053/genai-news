@@ -5,15 +5,10 @@ interface MetricsRouteOptions {
   metrics: AppMetricsRegistry;
 }
 
-export const metricsRoutes: FastifyPluginAsync<MetricsRouteOptions> = async (
-  app,
-  options,
-) => {
+export const metricsRoutes: FastifyPluginAsync<MetricsRouteOptions> = async (app, options) => {
   app.get('/metrics', async (_request, reply) => {
     const output = await options.metrics.metrics();
 
-    return reply
-      .header('content-type', options.metrics.contentType)
-      .send(output);
+    return reply.header('content-type', options.metrics.contentType).send(output);
   });
 };

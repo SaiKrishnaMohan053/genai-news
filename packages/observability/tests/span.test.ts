@@ -122,9 +122,7 @@ describe('runWithSpan', () => {
       startActiveSpan: vi.fn(
         async (
           _name: string,
-          callback: (
-            activeSpan: typeof spanWithAttribute,
-          ) => Promise<unknown>,
+          callback: (activeSpan: typeof spanWithAttribute) => Promise<unknown>,
         ) => callback(spanWithAttribute),
       ),
     } as never);
@@ -135,18 +133,12 @@ describe('runWithSpan', () => {
         spanName: 'operation',
       },
       async (activeSpan) => {
-        activeSpan.setAttribute(
-          'news.fetched_count',
-          10,
-        );
+        activeSpan.setAttribute('news.fetched_count', 10);
 
         return 'result';
       },
     );
 
-    expect(setAttribute).toHaveBeenCalledWith(
-      'news.fetched_count',
-      10,
-    );
+    expect(setAttribute).toHaveBeenCalledWith('news.fetched_count', 10);
   });
 });

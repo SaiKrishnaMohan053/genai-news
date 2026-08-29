@@ -1,23 +1,11 @@
-export type StructuredEventLevel =
-  | 'info'
-  | 'warn'
-  | 'error';
+export type StructuredEventLevel = 'info' | 'warn' | 'error';
 
 export interface StructuredEventLogger {
-  info(
-    fields: Record<string, unknown>,
-    message: string,
-  ): void;
+  info(fields: Record<string, unknown>, message: string): void;
 
-  warn(
-    fields: Record<string, unknown>,
-    message: string,
-  ): void;
+  warn(fields: Record<string, unknown>, message: string): void;
 
-  error(
-    fields: Record<string, unknown>,
-    message: string,
-  ): void;
+  error(fields: Record<string, unknown>, message: string): void;
 }
 
 export interface EmitStructuredEventOptions {
@@ -28,9 +16,7 @@ export interface EmitStructuredEventOptions {
   error?: unknown;
 }
 
-export function emitStructuredEvent(
-  options: EmitStructuredEventOptions,
-): void {
+export function emitStructuredEvent(options: EmitStructuredEventOptions): void {
   const level = options.level ?? 'info';
 
   const fields = {
@@ -45,8 +31,5 @@ export function emitStructuredEvent(
       : {}),
   };
 
-  options.logger[level](
-    fields,
-    options.event,
-  );
+  options.logger[level](fields, options.event);
 }

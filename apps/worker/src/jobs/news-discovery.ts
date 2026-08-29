@@ -1,8 +1,5 @@
 import type { ArticleRepository } from '@genai-news/database';
-import {
-  runWithSpan,
-  type NewsDiscoveryMetrics,
-} from '@genai-news/observability';
+import { runWithSpan, type NewsDiscoveryMetrics } from '@genai-news/observability';
 import { newsDiscoveryJobSchema, type NewsDiscoveryJobPayload } from '@genai-news/schemas';
 import {
   deduplicateArticles,
@@ -72,17 +69,13 @@ export async function processNewsDiscovery(
         limit: validatedPayload.limit,
       });
 
-      span.setAttribute(
-        'news.fetched_count',
-        result.articles.length,
-      );
+      span.setAttribute('news.fetched_count', result.articles.length);
 
       return result;
     },
   );
 
-  const fetchDurationSeconds =
-    (performance.now() - fetchStartedAt) / 1000;
+  const fetchDurationSeconds = (performance.now() - fetchStartedAt) / 1000;
 
   dependencies.metrics?.sourceFetchDurationSeconds.observe(
     {
@@ -129,15 +122,9 @@ export async function processNewsDiscovery(
         normalizedArticles.push(normalized.article);
       }
 
-      span.setAttribute(
-        'news.normalized_count',
-        normalizedArticles.length,
-      );
+      span.setAttribute('news.normalized_count', normalizedArticles.length);
 
-      span.setAttribute(
-        'news.normalization_rejected_count',
-        normalizationRejectedCount,
-      );
+      span.setAttribute('news.normalization_rejected_count', normalizationRejectedCount);
 
       return {
         normalizedArticles,
@@ -169,8 +156,7 @@ export async function processNewsDiscovery(
 
       attributes: {
         'news.source.id': sourceId,
-        'news.input_count':
-          normalizationResult.normalizedArticles.length,
+        'news.input_count': normalizationResult.normalizedArticles.length,
       },
     },
 
@@ -194,15 +180,9 @@ export async function processNewsDiscovery(
         freshArticles.push(article);
       }
 
-      span.setAttribute(
-        'news.fresh_count',
-        freshArticles.length,
-      );
+      span.setAttribute('news.fresh_count', freshArticles.length);
 
-      span.setAttribute(
-        'news.freshness_rejected_count',
-        freshnessRejectedCount,
-      );
+      span.setAttribute('news.freshness_rejected_count', freshnessRejectedCount);
 
       return {
         freshArticles,
@@ -237,19 +217,11 @@ export async function processNewsDiscovery(
     },
 
     async (span) => {
-      const result = deduplicateArticles(
-        freshnessResult.freshArticles,
-      );
+      const result = deduplicateArticles(freshnessResult.freshArticles);
 
-      span.setAttribute(
-        'news.unique_count',
-        result.uniqueArticles.length,
-      );
+      span.setAttribute('news.unique_count', result.uniqueArticles.length);
 
-      span.setAttribute(
-        'news.duplicate_count',
-        result.duplicates.length,
-      );
+      span.setAttribute('news.duplicate_count', result.duplicates.length);
 
       return result;
     },
@@ -278,8 +250,7 @@ export async function processNewsDiscovery(
 
       attributes: {
         'news.source.id': sourceId,
-        'news.input_count':
-          deduplicated.uniqueArticles.length,
+        'news.input_count': deduplicated.uniqueArticles.length,
       },
     },
 
@@ -291,17 +262,13 @@ export async function processNewsDiscovery(
         count += 1;
       }
 
-      span.setAttribute(
-        'news.persisted_count',
-        count,
-      );
+      span.setAttribute('news.persisted_count', count);
 
       return count;
     },
   );
 
-  const persistenceDurationSeconds =
-    (performance.now() - persistenceStartedAt) / 1000;
+  const persistenceDurationSeconds = (performance.now() - persistenceStartedAt) / 1000;
 
   dependencies.metrics?.persistenceDurationSeconds.observe(
     {
@@ -322,23 +289,17 @@ export async function processNewsDiscovery(
 
     fetchedCount: fetched.articles.length,
 
-    normalizedCount:
-      normalizationResult.normalizedArticles.length,
+    normalizedCount: normalizationResult.normalizedArticles.length,
 
-    normalizationRejectedCount:
-      normalizationResult.normalizationRejectedCount,
+    normalizationRejectedCount: normalizationResult.normalizationRejectedCount,
 
-    freshCount:
-      freshnessResult.freshArticles.length,
+    freshCount: freshnessResult.freshArticles.length,
 
-    freshnessRejectedCount:
-      freshnessResult.freshnessRejectedCount,
+    freshnessRejectedCount: freshnessResult.freshnessRejectedCount,
 
-    uniqueCount:
-      deduplicated.uniqueArticles.length,
+    uniqueCount: deduplicated.uniqueArticles.length,
 
-    duplicateCount:
-      deduplicated.duplicates.length,
+    duplicateCount: deduplicated.duplicates.length,
 
     persistedCount,
 

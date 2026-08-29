@@ -16,22 +16,16 @@ export interface CreateMetricsRegistryOptions {
 export interface AppMetricsRegistry {
   registry: Registry;
 
-  counter<T extends string>(
-    configuration: CounterConfiguration<T>,
-  ): Counter<T>;
+  counter<T extends string>(configuration: CounterConfiguration<T>): Counter<T>;
 
-  histogram<T extends string>(
-    configuration: HistogramConfiguration<T>,
-  ): Histogram<T>;
+  histogram<T extends string>(configuration: HistogramConfiguration<T>): Histogram<T>;
 
   metrics(): Promise<string>;
 
   contentType: string;
 }
 
-export function createMetricsRegistry(
-  options: CreateMetricsRegistryOptions,
-): AppMetricsRegistry {
+export function createMetricsRegistry(options: CreateMetricsRegistryOptions): AppMetricsRegistry {
   const registry = new Registry();
 
   registry.setDefaultLabels({
@@ -48,18 +42,14 @@ export function createMetricsRegistry(
   return {
     registry,
 
-    counter<T extends string>(
-      configuration: CounterConfiguration<T>,
-    ): Counter<T> {
+    counter<T extends string>(configuration: CounterConfiguration<T>): Counter<T> {
       return new Counter({
         ...configuration,
         registers: [registry],
       });
     },
 
-    histogram<T extends string>(
-      configuration: HistogramConfiguration<T>,
-    ): Histogram<T> {
+    histogram<T extends string>(configuration: HistogramConfiguration<T>): Histogram<T> {
       return new Histogram({
         ...configuration,
         registers: [registry],

@@ -37,21 +37,13 @@ export const newsDiscoveryRoutes: FastifyPluginAsync<NewsDiscoveryRouteOptions> 
     const queue = options.queue;
 
     if (!queue) {
-      throw new AppError(
-        'News discovery queue is unavailable',
-        503,
-        'NEWS_DISCOVERY_UNAVAILABLE',
-      );
+      throw new AppError('News discovery queue is unavailable', 503, 'NEWS_DISCOVERY_UNAVAILABLE');
     }
 
     const parsed = discoveryRequestSchema.safeParse(request.body);
 
     if (!parsed.success) {
-      throw new AppError(
-        'Invalid news discovery request',
-        400,
-        'INVALID_DISCOVERY_REQUEST',
-      );
+      throw new AppError('Invalid news discovery request', 400, 'INVALID_DISCOVERY_REQUEST');
     }
 
     const now = options.now ?? (() => new Date());

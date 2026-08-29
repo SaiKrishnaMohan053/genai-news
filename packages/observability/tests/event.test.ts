@@ -2,10 +2,7 @@ import { PassThrough } from 'node:stream';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  createLogger,
-  emitStructuredEvent,
-} from '../src/index.js';
+import { createLogger, emitStructuredEvent } from '../src/index.js';
 
 describe('emitStructuredEvent', () => {
   it('emits a machine-readable event name', () => {
@@ -33,13 +30,9 @@ describe('emitStructuredEvent', () => {
       },
     });
 
-    const entry = JSON.parse(
-      output.trim(),
-    ) as Record<string, unknown>;
+    const entry = JSON.parse(output.trim()) as Record<string, unknown>;
 
-    expect(entry.event).toBe(
-      'news.discovery.completed',
-    );
+    expect(entry.event).toBe('news.discovery.completed');
 
     expect(entry.sourceId).toBe('gnews');
 

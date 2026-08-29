@@ -4,14 +4,8 @@ import {
   createNewsDiscoveryMetrics,
   emitStructuredEvent,
 } from '@genai-news/observability';
-import {
-  createRedisClient,
-  createWorkerRedisClient,
-} from '@genai-news/queue';
-import {
-  createArticleRepository,
-  createPrismaClient,
-} from '@genai-news/database';
+import { createRedisClient, createWorkerRedisClient } from '@genai-news/queue';
+import { createArticleRepository, createPrismaClient } from '@genai-news/database';
 
 import { loadWorkerEnv } from './config/env.js';
 import { createWorkerHealthServer } from './health/server.js';
@@ -22,28 +16,18 @@ import { createSystemWorker } from './worker.js';
 
 const env = loadWorkerEnv();
 
-const database = createPrismaClient(
-  env.DATABASE_URL,
-);
+const database = createPrismaClient(env.DATABASE_URL);
 
-const articleRepository =
-  createArticleRepository(database);
+const articleRepository = createArticleRepository(database);
 
 const sourceRegistry = createNewsSourceRegistry({
   gnewsApiKey: env.GNEWS_API_KEY,
 });
 
 const freshnessPolicy = {
-  maxAgeMs:
-    env.NEWS_FRESHNESS_HOURS *
-    60 *
-    60 *
-    1000,
+  maxAgeMs: env.NEWS_FRESHNESS_HOURS * 60 * 60 * 1000,
 
-  maxFutureSkewMs:
-    env.NEWS_MAX_FUTURE_SKEW_MINUTES *
-    60 *
-    1000,
+  maxFutureSkewMs: env.NEWS_MAX_FUTURE_SKEW_MINUTES * 60 * 1000,
 
   missingPublishedAt: 'reject' as const,
 };
@@ -59,51 +43,38 @@ const metricsRegistry = createMetricsRegistry({
   environment: env.NODE_ENV,
 });
 
-const newsDiscoveryMetrics =
-  createNewsDiscoveryMetrics(
-    metricsRegistry,
+const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
+
+const workerRedis = createWorkerRedisClient(env.REDIS_URL);
+
+const discoveryWorkerRedis = createWorkerRedisClient(env.REDIS_URL);
+
+const healthRedis = createRedisClient(env.REDIS_URL);
+
+const worker = createSystemWorker(workerRedis);
+
+const discoveryWorker = createNewsDiscoveryWorker({
+  connection: discoveryWorkerRedis,
+  sourceRegistry,
+  articleRepository,
+  freshnessPolicy,
+  metrics: newsDiscoveryMetrics,
+});
+
+const healthServer = createWorkerHealthServer({
+  redis: healthRedis,
+  metrics: metricsRegistry,
+});
+
+healthServer.listen(env.WORKER_HEALTH_PORT, env.WORKER_HEALTH_HOST, () => {
+  logger.info(
+    {
+      host: env.WORKER_HEALTH_HOST,
+      port: env.WORKER_HEALTH_PORT,
+    },
+    'worker health server started',
   );
-
-const workerRedis =
-  createWorkerRedisClient(env.REDIS_URL);
-
-const discoveryWorkerRedis =
-  createWorkerRedisClient(env.REDIS_URL);
-
-const healthRedis =
-  createRedisClient(env.REDIS_URL);
-
-const worker =
-  createSystemWorker(workerRedis);
-
-const discoveryWorker =
-  createNewsDiscoveryWorker({
-    connection: discoveryWorkerRedis,
-    sourceRegistry,
-    articleRepository,
-    freshnessPolicy,
-    metrics: newsDiscoveryMetrics,
-  });
-
-const healthServer =
-  createWorkerHealthServer({
-    redis: healthRedis,
-    metrics: metricsRegistry,
-  });
-
-healthServer.listen(
-  env.WORKER_HEALTH_PORT,
-  env.WORKER_HEALTH_HOST,
-  () => {
-    logger.info(
-      {
-        host: env.WORKER_HEALTH_HOST,
-        port: env.WORKER_HEALTH_PORT,
-      },
-      'worker health server started',
-    );
-  },
-);
+});
 
 worker.on('ready', () => {
   logger.info('worker ready');
@@ -140,101 +111,74 @@ worker.on('error', (error) => {
 });
 
 discoveryWorker.on('ready', () => {
-  logger.info(
-    'news discovery worker ready',
+  logger.info('news discovery worker ready');
+});
+
+discoveryWorker.on('completed', (job, result) => {
+  emitStructuredEvent({
+    logger,
+
+    event: 'news.discovery.completed',
+
+    attributes: {
+      jobId: job.id,
+      jobName: job.name,
+      sourceId: result.sourceId,
+
+      fetchedCount: result.fetchedCount,
+
+      normalizedCount: result.normalizedCount,
+
+      normalizationRejectedCount: result.normalizationRejectedCount,
+
+      freshCount: result.freshCount,
+
+      freshnessRejectedCount: result.freshnessRejectedCount,
+
+      uniqueCount: result.uniqueCount,
+
+      duplicateCount: result.duplicateCount,
+
+      persistedCount: result.persistedCount,
+
+      requestedAt: result.requestedAt,
+
+      completedAt: result.completedAt,
+    },
+  });
+});
+
+discoveryWorker.on('failed', (job, error) => {
+  emitStructuredEvent({
+    logger,
+
+    event: 'news.discovery.failed',
+
+    level: 'error',
+
+    attributes: {
+      jobId: job?.id,
+      jobName: job?.name,
+      sourceId: job?.data.sourceId,
+      requestedAt: job?.data.requestedAt,
+    },
+
+    error,
+  });
+});
+
+discoveryWorker.on('error', (error) => {
+  logger.error(
+    {
+      err: error,
+    },
+    'news discovery worker error',
   );
 });
 
-discoveryWorker.on(
-  'completed',
-  (job, result) => {
-    emitStructuredEvent({
-      logger,
-
-      event:
-        'news.discovery.completed',
-
-      attributes: {
-        jobId: job.id,
-        jobName: job.name,
-        sourceId: result.sourceId,
-
-        fetchedCount:
-          result.fetchedCount,
-
-        normalizedCount:
-          result.normalizedCount,
-
-        normalizationRejectedCount:
-          result.normalizationRejectedCount,
-
-        freshCount:
-          result.freshCount,
-
-        freshnessRejectedCount:
-          result.freshnessRejectedCount,
-
-        uniqueCount:
-          result.uniqueCount,
-
-        duplicateCount:
-          result.duplicateCount,
-
-        persistedCount:
-          result.persistedCount,
-
-        requestedAt:
-          result.requestedAt,
-
-        completedAt:
-          result.completedAt,
-      },
-    });
-  },
-);
-
-discoveryWorker.on(
-  'failed',
-  (job, error) => {
-    emitStructuredEvent({
-      logger,
-
-      event:
-        'news.discovery.failed',
-
-      level: 'error',
-
-      attributes: {
-        jobId: job?.id,
-        jobName: job?.name,
-        sourceId:
-          job?.data.sourceId,
-        requestedAt:
-          job?.data.requestedAt,
-      },
-
-      error,
-    });
-  },
-);
-
-discoveryWorker.on(
-  'error',
-  (error) => {
-    logger.error(
-      {
-        err: error,
-      },
-      'news discovery worker error',
-    );
-  },
-);
-
 let shuttingDown = false;
 
-async function shutdown(
-  signal: string,
-): Promise<void> {
+async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) {
     return;
   }
@@ -252,20 +196,16 @@ async function shutdown(
     await discoveryWorker.close();
     await worker.close();
 
-    await new Promise<void>(
-      (resolve, reject) => {
-        healthServer.close(
-          (error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
+    await new Promise<void>((resolve, reject) => {
+      healthServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
 
-            resolve();
-          },
-        );
-      },
-    );
+        resolve();
+      });
+    });
 
     await database.$disconnect();
 
@@ -277,9 +217,7 @@ async function shutdown(
       await tracing.shutdown();
     }
 
-    logger.info(
-      'worker shutdown completed',
-    );
+    logger.info('worker shutdown completed');
 
     process.exit(0);
   } catch (error) {

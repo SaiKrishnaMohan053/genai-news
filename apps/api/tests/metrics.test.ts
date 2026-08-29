@@ -1,7 +1,4 @@
-import {
-  createMetricsRegistry,
-  createNewsDiscoveryMetrics,
-} from '@genai-news/observability';
+import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
 import { describe, expect, it } from 'vitest';
 
 import { buildApp } from '../src/app.js';
@@ -14,8 +11,7 @@ describe('metrics route', () => {
       collectDefaults: false,
     });
 
-    const newsMetrics =
-      createNewsDiscoveryMetrics(metricsRegistry);
+    const newsMetrics = createNewsDiscoveryMetrics(metricsRegistry);
 
     newsMetrics.discoveryEnqueueTotal.inc({
       source_id: 'gnews',
@@ -35,29 +31,17 @@ describe('metrics route', () => {
 
       expect(response.statusCode).toBe(200);
 
-      expect(
-        response.headers['content-type'],
-      ).toContain('text/plain');
+      expect(response.headers['content-type']).toContain('text/plain');
 
-      expect(response.body).toContain(
-        'genai_news_discovery_enqueue_total',
-      );
+      expect(response.body).toContain('genai_news_discovery_enqueue_total');
 
-      expect(response.body).toContain(
-        'source_id="gnews"',
-      );
+      expect(response.body).toContain('source_id="gnews"');
 
-      expect(response.body).toContain(
-        'status="accepted"',
-      );
+      expect(response.body).toContain('status="accepted"');
 
-      expect(response.body).toContain(
-        'service="api"',
-      );
+      expect(response.body).toContain('service="api"');
 
-      expect(response.body).toContain(
-        'environment="test"',
-      );
+      expect(response.body).toContain('environment="test"');
     } finally {
       await app.close();
     }

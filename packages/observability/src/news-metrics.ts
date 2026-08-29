@@ -4,10 +4,7 @@ export type NewsDiscoveryStatus = 'completed' | 'failed';
 
 export interface NewsDiscoveryMetrics {
   jobsTotal: {
-    inc(labels: {
-      source_id: string;
-      status: NewsDiscoveryStatus;
-    }): void;
+    inc(labels: { source_id: string; status: NewsDiscoveryStatus }): void;
   };
 
   articlesFetchedTotal: {
@@ -47,10 +44,7 @@ export interface NewsDiscoveryMetrics {
   };
 
   discoveryEnqueueTotal: {
-    inc(labels: {
-      source_id: string;
-      status: 'accepted' | 'failed';
-    }): void;
+    inc(labels: { source_id: string; status: 'accepted' | 'failed' }): void;
   };
 
   discoveryEnqueueDurationSeconds: {
@@ -71,23 +65,9 @@ export interface NewsDiscoveryMetrics {
   };
 }
 
-const DURATION_BUCKETS_SECONDS = [
-  0.01,
-  0.025,
-  0.05,
-  0.1,
-  0.25,
-  0.5,
-  1,
-  2.5,
-  5,
-  10,
-  30,
-];
+const DURATION_BUCKETS_SECONDS = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30];
 
-export function createNewsDiscoveryMetrics(
-  metrics: AppMetricsRegistry,
-): NewsDiscoveryMetrics {
+export function createNewsDiscoveryMetrics(metrics: AppMetricsRegistry): NewsDiscoveryMetrics {
   return {
     jobsTotal: metrics.counter({
       name: 'genai_news_discovery_jobs_total',

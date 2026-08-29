@@ -1,17 +1,8 @@
-import Fastify, {
-  type FastifyBaseLogger,
-  type FastifyInstance,
-} from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 
 import type { DatabaseClient } from '@genai-news/database';
-import type {
-  AppMetricsRegistry,
-  NewsDiscoveryMetrics,
-} from '@genai-news/observability';
-import type {
-  NewsDiscoveryQueue,
-  RedisClient,
-} from '@genai-news/queue';
+import type { AppMetricsRegistry, NewsDiscoveryMetrics } from '@genai-news/observability';
+import type { NewsDiscoveryQueue, RedisClient } from '@genai-news/queue';
 
 import { AppError } from './errors/app-error.js';
 import { healthRoutes } from './routes/health.js';

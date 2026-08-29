@@ -3,10 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkerHealthServer } from '../src/health/server.js';
-import {
-  createMetricsRegistry,
-  createNewsDiscoveryMetrics,
-} from '@genai-news/observability';
+import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
 
 describe('worker health server', () => {
   const servers: ReturnType<typeof createWorkerHealthServer>[] = [];
@@ -26,9 +23,7 @@ describe('worker health server', () => {
 
   async function startServer(
     redis: unknown,
-    metrics?: Parameters<
-      typeof createWorkerHealthServer
-    >[0]['metrics'],
+    metrics?: Parameters<typeof createWorkerHealthServer>[0]['metrics'],
   ): Promise<string> {
     const server = createWorkerHealthServer({
       redis: redis as never,
@@ -57,15 +52,11 @@ describe('worker health server', () => {
       ping: vi.fn(),
     });
 
-    const response = await fetch(
-      `${baseUrl}/metrics`,
-    );
+    const response = await fetch(`${baseUrl}/metrics`);
 
     expect(response.status).toBe(404);
 
-    await expect(
-      response.json(),
-    ).resolves.toEqual({
+    await expect(response.json()).resolves.toEqual({
       error: {
         code: 'NOT_FOUND',
         message: 'Route GET /metrics not found',
@@ -80,8 +71,7 @@ describe('worker health server', () => {
       collectDefaults: false,
     });
 
-    const newsMetrics =
-      createNewsDiscoveryMetrics(metricsRegistry);
+    const newsMetrics = createNewsDiscoveryMetrics(metricsRegistry);
 
     newsMetrics.jobsTotal.inc({
       source_id: 'gnews',
@@ -103,41 +93,25 @@ describe('worker health server', () => {
       metricsRegistry,
     );
 
-    const response = await fetch(
-      `${baseUrl}/metrics`,
-    );
+    const response = await fetch(`${baseUrl}/metrics`);
 
     expect(response.status).toBe(200);
 
-    expect(
-      response.headers.get('content-type'),
-    ).toContain('text/plain');
+    expect(response.headers.get('content-type')).toContain('text/plain');
 
     const output = await response.text();
 
-    expect(output).toContain(
-      'genai_news_discovery_jobs_total',
-    );
+    expect(output).toContain('genai_news_discovery_jobs_total');
 
-    expect(output).toContain(
-      'status="completed"',
-    );
+    expect(output).toContain('status="completed"');
 
-    expect(output).toContain(
-      'genai_news_articles_persisted_total',
-    );
+    expect(output).toContain('genai_news_articles_persisted_total');
 
-    expect(output).toContain(
-      'source_id="gnews"',
-    );
+    expect(output).toContain('source_id="gnews"');
 
-    expect(output).toContain(
-      'service="worker"',
-    );
+    expect(output).toContain('service="worker"');
 
-    expect(output).toContain(
-      'environment="test"',
-    );
+    expect(output).toContain('environment="test"');
   });
 
   it('returns worker liveness', async () => {

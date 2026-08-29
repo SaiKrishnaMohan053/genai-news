@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { processNewsDiscovery } from '../src/jobs/news-discovery.js';
 import type { NewsSourceRegistry } from '../src/news/source-registry.js';
-import {
-  createMetricsRegistry,
-  createNewsDiscoveryMetrics,
-} from '@genai-news/observability';
+import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
 
 const now = new Date('2026-08-27T16:00:00.000Z');
 
@@ -154,49 +151,27 @@ describe('processNewsDiscovery', () => {
 
     const output = await registry.metrics();
 
-    expect(output).toContain(
-      'genai_news_articles_fetched_total',
-    );
+    expect(output).toContain('genai_news_articles_fetched_total');
 
-    expect(output).toContain(
-      'genai_news_articles_normalized_total',
-    );
+    expect(output).toContain('genai_news_articles_normalized_total');
 
-    expect(output).toContain(
-      'genai_news_articles_normalization_rejected_total',
-    );
+    expect(output).toContain('genai_news_articles_normalization_rejected_total');
 
-    expect(output).toContain(
-      'genai_news_articles_fresh_total',
-    );
+    expect(output).toContain('genai_news_articles_fresh_total');
 
-    expect(output).toContain(
-      'genai_news_articles_freshness_rejected_total',
-    );
+    expect(output).toContain('genai_news_articles_freshness_rejected_total');
 
-    expect(output).toContain(
-      'genai_news_articles_unique_total',
-    );
+    expect(output).toContain('genai_news_articles_unique_total');
 
-    expect(output).toContain(
-      'genai_news_articles_duplicates_total',
-    );
+    expect(output).toContain('genai_news_articles_duplicates_total');
 
-    expect(output).toContain(
-      'genai_news_articles_persisted_total',
-    );
+    expect(output).toContain('genai_news_articles_persisted_total');
 
-    expect(output).toContain(
-      'genai_news_source_fetch_duration_seconds',
-    );
+    expect(output).toContain('genai_news_source_fetch_duration_seconds');
 
-    expect(output).toContain(
-      'genai_news_persistence_duration_seconds',
-    );
+    expect(output).toContain('genai_news_persistence_duration_seconds');
 
-    expect(output).toContain(
-      'source_id="gnews"',
-    );
+    expect(output).toContain('source_id="gnews"');
   });
 
   it('runs fetch, normalization, freshness, deduplication, and persistence', async () => {

@@ -20,8 +20,7 @@ const metricsRegistry = createMetricsRegistry({
   environment: env.NODE_ENV,
 });
 
-const newsDiscoveryMetrics =
-  createNewsDiscoveryMetrics(metricsRegistry);
+const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
 const newsDiscoveryQueue = createNewsDiscoveryQueue(redis);

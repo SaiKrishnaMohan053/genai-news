@@ -1,10 +1,7 @@
 import type { NewsDiscoveryQueue } from '@genai-news/queue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createMetricsRegistry,
-  createNewsDiscoveryMetrics,
-} from '@genai-news/observability';
+import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
 import { buildApp } from '../src/app.js';
 
 function createQueueMock(): NewsDiscoveryQueue {
@@ -29,11 +26,7 @@ function createTestMetrics() {
 }
 function createFailingQueueMock(): NewsDiscoveryQueue {
   return {
-    add: vi
-      .fn()
-      .mockRejectedValue(
-        new Error('redis unavailable'),
-      ),
+    add: vi.fn().mockRejectedValue(new Error('redis unavailable')),
   } as unknown as NewsDiscoveryQueue;
 }
 
@@ -70,17 +63,11 @@ describe('news discovery route', () => {
 
       const output = await registry.metrics();
 
-      expect(output).toContain(
-        'genai_news_discovery_enqueue_total',
-      );
+      expect(output).toContain('genai_news_discovery_enqueue_total');
 
-      expect(output).toContain(
-        'source_id="gnews"',
-      );
+      expect(output).toContain('source_id="gnews"');
 
-      expect(output).toContain(
-        'status="accepted"',
-      );
+      expect(output).toContain('status="accepted"');
 
       expect(response.statusCode).toBe(202);
 
@@ -121,9 +108,7 @@ describe('news discovery route', () => {
     const queue = createQueueMock();
     function createFailingQueueMock(): NewsDiscoveryQueue {
       return {
-        add: vi.fn().mockRejectedValue(
-          new Error('redis unavailable'),
-        ),
+        add: vi.fn().mockRejectedValue(new Error('redis unavailable')),
       } as unknown as NewsDiscoveryQueue;
     }
 
@@ -196,17 +181,11 @@ describe('news discovery route', () => {
 
       const output = await registry.metrics();
 
-      expect(output).toContain(
-        'genai_news_discovery_enqueue_total',
-      );
+      expect(output).toContain('genai_news_discovery_enqueue_total');
 
-      expect(output).toContain(
-        'source_id="gnews"',
-      );
+      expect(output).toContain('source_id="gnews"');
 
-      expect(output).toContain(
-        'status="failed"',
-      );
+      expect(output).toContain('status="failed"');
 
       expect(queue.add).toHaveBeenCalledOnce();
     } finally {
