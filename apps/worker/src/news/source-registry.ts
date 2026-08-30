@@ -20,9 +20,7 @@ export interface NewsSourceRegistryOptions {
   gnewsApiKey: string;
 }
 
-export function createNewsSourceRegistry(
-  options: NewsSourceRegistryOptions,
-): NewsSourceRegistry {
+export function createNewsSourceRegistry(options: NewsSourceRegistryOptions): NewsSourceRegistry {
   const sources = new Map<string, NewsSource>([
     [
       'gnews',

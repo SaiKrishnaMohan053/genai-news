@@ -1,144 +1,143 @@
 import type { Phase1ValidationExpectation } from './contracts.js';
 
-export const phase1ValidationMatrix:
-  readonly Phase1ValidationExpectation[] = [
-    {
-      scenario: 'successful-discovery',
+export const phase1ValidationMatrix: readonly Phase1ValidationExpectation[] = [
+  {
+    scenario: 'successful-discovery',
 
-      expectedOutcome: 'success',
+    expectedOutcome: 'success',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: true,
+    expectsPersistence: true,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.completed',
-    },
+    expectedStructuredEvent: 'news.discovery.completed',
+  },
 
-    {
-      scenario: 'source-network-failure',
+  {
+    scenario: 'source-network-failure',
 
-      expectedOutcome: 'retriable-failure',
+    expectedOutcome: 'retriable-failure',
 
-      expectsRetry: true,
+    expectsRetry: true,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.failed',
-    },
+    expectedStructuredEvent: 'news.discovery.failed',
+  },
 
-    {
-      scenario: 'source-http-retriable',
+  {
+    scenario: 'source-http-retriable',
 
-      expectedOutcome: 'retriable-failure',
+    expectedOutcome: 'retriable-failure',
 
-      expectsRetry: true,
+    expectsRetry: true,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.failed',
-    },
+    expectedStructuredEvent: 'news.discovery.failed',
+  },
 
-    {
-      scenario: 'source-http-terminal',
+  {
+    scenario: 'source-http-terminal',
 
-      expectedOutcome: 'terminal-failure',
+    expectedOutcome: 'terminal-failure',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.failed',
-    },
+    expectedStructuredEvent: 'news.discovery.failed',
+  },
 
-    {
-      scenario: 'source-invalid-payload',
+  {
+    scenario: 'source-invalid-payload',
 
-      expectedOutcome: 'terminal-failure',
+    expectedOutcome: 'terminal-failure',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.failed',
-    },
+    expectedStructuredEvent: 'news.discovery.failed',
+  },
 
-    {
-      scenario: 'queue-unavailable',
+  {
+    scenario: 'queue-unavailable',
 
-      expectedOutcome: 'terminal-failure',
+    expectedOutcome: 'terminal-failure',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.enqueue_failed',
-    },
+    expectedStructuredEvent: 'news.discovery.enqueue_failed',
+  },
 
-    {
-      scenario: 'persistence-failure',
+  {
+    scenario: 'persistence-failure',
 
-      expectedOutcome: 'retriable-failure',
+    expectedOutcome: 'retriable-failure',
 
-      expectsRetry: true,
+    expectsRetry: true,
 
-      expectsPersistence: false,
+    expectsPersistence: false,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.failed',
-    },
+    expectedStructuredEvent: 'news.discovery.failed',
+  },
 
-    {
-      scenario: 'worker-retry',
+  {
+    scenario: 'worker-retry',
 
-      expectedOutcome: 'success',
+    expectedOutcome: 'success',
 
-      expectsRetry: true,
+    expectsRetry: true,
 
-      expectsPersistence: true,
+    expectsPersistence: true,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.completed',
-    },
+    expectedStructuredEvent: 'news.discovery.completed',
+  },
 
-    {
-      scenario: 'replayed-job',
+  {
+    scenario: 'replayed-job',
 
-      expectedOutcome: 'success',
+    expectedOutcome: 'success',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: true,
+    expectsPersistence: true,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.completed',
-    },
+    expectedStructuredEvent: 'news.discovery.completed',
+  },
 
-    {
-      scenario: 'repeated-discovery',
+  {
+    scenario: 'repeated-discovery',
 
-      expectedOutcome: 'success',
+    expectedOutcome: 'success',
 
-      expectsRetry: false,
+    expectsRetry: false,
 
-      expectsPersistence: true,
+    expectsPersistence: true,
 
-      expectsDuplicatePersistence: false,
+    expectsDuplicatePersistence: false,
 
-      expectedStructuredEvent: 'news.discovery.completed',
-    },
-  ];
+    expectedStructuredEvent: 'news.discovery.completed',
+  },
+];

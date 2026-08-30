@@ -11,8 +11,7 @@ export const PHASE1_VALIDATION_SCENARIOS = [
   'repeated-discovery',
 ] as const;
 
-export type Phase1ValidationScenario =
-  (typeof PHASE1_VALIDATION_SCENARIOS)[number];
+export type Phase1ValidationScenario = (typeof PHASE1_VALIDATION_SCENARIOS)[number];
 
 export const PHASE1_VALIDATION_OUTCOMES = [
   'success',
@@ -21,8 +20,7 @@ export const PHASE1_VALIDATION_OUTCOMES = [
   'terminal-failure',
 ] as const;
 
-export type Phase1ValidationOutcome =
-  (typeof PHASE1_VALIDATION_OUTCOMES)[number];
+export type Phase1ValidationOutcome = (typeof PHASE1_VALIDATION_OUTCOMES)[number];
 
 export type Phase1ValidationExpectation = {
   scenario: Phase1ValidationScenario;

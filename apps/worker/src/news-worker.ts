@@ -84,47 +84,28 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
                   : {}),
               });
 
-              span.setAttribute(
-                'news.fetched_count',
-                discoveryResult.fetchedCount,
-              );
+              span.setAttribute('news.fetched_count', discoveryResult.fetchedCount);
 
-              span.setAttribute(
-                'news.normalized_count',
-                discoveryResult.normalizedCount,
-              );
+              span.setAttribute('news.normalized_count', discoveryResult.normalizedCount);
 
-              span.setAttribute(
-                'news.fresh_count',
-                discoveryResult.freshCount,
-              );
+              span.setAttribute('news.fresh_count', discoveryResult.freshCount);
 
-              span.setAttribute(
-                'news.unique_count',
-                discoveryResult.uniqueCount,
-              );
+              span.setAttribute('news.unique_count', discoveryResult.uniqueCount);
 
-              span.setAttribute(
-                'news.persisted_count',
-                discoveryResult.persistedCount,
-              );
+              span.setAttribute('news.persisted_count', discoveryResult.persistedCount);
 
               return discoveryResult;
             } catch (error) {
               const classification = classifyDiscoveryFailure(error);
 
-              annotateDiscoveryFailureSpan(
-                span,
-                classification,
-              );
+              annotateDiscoveryFailureSpan(span, classification);
 
               throw error;
             }
           },
         );
 
-        const discoveryDurationSeconds =
-          (performance.now() - discoveryStartedAt) / 1000;
+        const discoveryDurationSeconds = (performance.now() - discoveryStartedAt) / 1000;
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
@@ -140,8 +121,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
         return result;
       } catch (error) {
-        const discoveryDurationSeconds =
-          (performance.now() - discoveryStartedAt) / 1000;
+        const discoveryDurationSeconds = (performance.now() - discoveryStartedAt) / 1000;
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
@@ -181,9 +161,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
         if (!classification.retryable) {
           throw new UnrecoverableError(
-            error instanceof Error
-              ? error.message
-              : 'Unrecoverable news discovery failure.',
+            error instanceof Error ? error.message : 'Unrecoverable news discovery failure.',
           );
         }
 

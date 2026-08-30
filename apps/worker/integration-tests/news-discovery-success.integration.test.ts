@@ -1,20 +1,8 @@
-import {
-  createArticleRepository,
-  createPrismaClient,
-} from '@genai-news/database';
+import { createArticleRepository, createPrismaClient } from '@genai-news/database';
 
-import type {
-  NewsSource,
-  NewsSourceResult,
-} from '@genai-news/shared';
+import type { NewsSource, NewsSourceResult } from '@genai-news/shared';
 
-import {
-  afterAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { processNewsDiscovery } from '../src/jobs/news-discovery.js';
 
@@ -22,14 +10,11 @@ import type { NewsSourceRegistry } from '../src/news/source-registry.js';
 
 const now = new Date('2026-08-30T12:00:00.000Z');
 
-const canonicalUrl =
-  'https://phase1-validation.example.com/full-success';
+const canonicalUrl = 'https://phase1-validation.example.com/full-success';
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error(
-    'DATABASE_URL is required for worker integration tests',
-  );
+  throw new Error('DATABASE_URL is required for worker integration tests');
 }
 
 const database = createPrismaClient(databaseUrl);
@@ -125,8 +110,7 @@ describe('Phase 1 successful discovery integration', () => {
     await database.article.deleteMany({
       where: {
         canonicalUrl: {
-          startsWith:
-            'https://phase1-validation.example.com/',
+          startsWith: 'https://phase1-validation.example.com/',
         },
       },
     });
@@ -136,8 +120,7 @@ describe('Phase 1 successful discovery integration', () => {
     await database.article.deleteMany({
       where: {
         canonicalUrl: {
-          startsWith:
-            'https://phase1-validation.example.com/',
+          startsWith: 'https://phase1-validation.example.com/',
         },
       },
     });
@@ -188,8 +171,7 @@ describe('Phase 1 successful discovery integration', () => {
       completedAt: '2026-08-30T12:00:00.000Z',
     });
 
-    const persisted =
-      await repository.findByCanonicalUrl(canonicalUrl);
+    const persisted = await repository.findByCanonicalUrl(canonicalUrl);
 
     expect(persisted).not.toBeNull();
 
@@ -200,8 +182,7 @@ describe('Phase 1 successful discovery integration', () => {
 
       sourceId: 'gnews',
 
-      publisherName:
-        'Phase 1 Validation Publisher',
+      publisherName: 'Phase 1 Validation Publisher',
 
       externalId: 'phase1-full-success-1',
     });

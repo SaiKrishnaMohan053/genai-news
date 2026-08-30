@@ -1,7 +1,4 @@
-import {
-  GNewsError,
-  RssError,
-} from '@genai-news/tools';
+import { GNewsError, RssError } from '@genai-news/tools';
 
 import { ZodError } from 'zod';
 
@@ -10,11 +7,7 @@ import { UnsupportedNewsSourceError } from './source-registry.js';
 export type DiscoveryFailureClassification =
   | {
       retryable: true;
-      reason:
-        | 'source-timeout'
-        | 'source-network'
-        | 'source-http-retryable'
-        | 'unknown';
+      reason: 'source-timeout' | 'source-network' | 'source-http-retryable' | 'unknown';
     }
   | {
       retryable: false;
@@ -25,17 +18,12 @@ export type DiscoveryFailureClassification =
         | 'unsupported-source';
     };
 
-export function classifyDiscoveryFailure(
-  error: unknown,
-): DiscoveryFailureClassification {
+export function classifyDiscoveryFailure(error: unknown): DiscoveryFailureClassification {
   if (error instanceof GNewsError) {
     return classifyProviderError({
       kind: error.kind,
       statusCode: error.statusCode,
-      invalidPayloadKinds: [
-        'invalid-json',
-        'invalid-response',
-      ],
+      invalidPayloadKinds: ['invalid-json', 'invalid-response'],
     });
   }
 
@@ -43,10 +31,7 @@ export function classifyDiscoveryFailure(
     return classifyProviderError({
       kind: error.kind,
       statusCode: error.statusCode,
-      invalidPayloadKinds: [
-        'invalid-xml',
-        'invalid-feed',
-      ],
+      invalidPayloadKinds: ['invalid-xml', 'invalid-feed'],
     });
   }
 
@@ -76,9 +61,7 @@ type ProviderErrorInput = {
   invalidPayloadKinds: readonly string[];
 };
 
-function classifyProviderError(
-  input: ProviderErrorInput,
-): DiscoveryFailureClassification {
+function classifyProviderError(input: ProviderErrorInput): DiscoveryFailureClassification {
   if (input.kind === 'timeout') {
     return {
       retryable: true,
@@ -120,9 +103,7 @@ function classifyProviderError(
   };
 }
 
-function isRetryableHttpStatus(
-  statusCode: number | undefined,
-): boolean {
+function isRetryableHttpStatus(statusCode: number | undefined): boolean {
   if (statusCode === undefined) {
     return true;
   }

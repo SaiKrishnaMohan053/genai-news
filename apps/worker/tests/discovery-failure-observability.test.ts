@@ -18,15 +18,9 @@ describe('annotateDiscoveryFailureSpan', () => {
       reason: 'source-network',
     });
 
-    expect(setAttribute).toHaveBeenCalledWith(
-      'news.failure.reason',
-      'source-network',
-    );
+    expect(setAttribute).toHaveBeenCalledWith('news.failure.reason', 'source-network');
 
-    expect(setAttribute).toHaveBeenCalledWith(
-      'news.failure.retryable',
-      true,
-    );
+    expect(setAttribute).toHaveBeenCalledWith('news.failure.retryable', true);
   });
 
   it('records terminal failure classification', () => {
@@ -41,14 +35,8 @@ describe('annotateDiscoveryFailureSpan', () => {
       reason: 'source-invalid-payload',
     });
 
-    expect(setAttribute).toHaveBeenCalledWith(
-      'news.failure.reason',
-      'source-invalid-payload',
-    );
+    expect(setAttribute).toHaveBeenCalledWith('news.failure.reason', 'source-invalid-payload');
 
-    expect(setAttribute).toHaveBeenCalledWith(
-      'news.failure.retryable',
-      false,
-    );
+    expect(setAttribute).toHaveBeenCalledWith('news.failure.retryable', false);
   });
 });

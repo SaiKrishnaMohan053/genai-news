@@ -8,13 +8,9 @@ import {
 
 describe('phase1ValidationMatrix', () => {
   it('defines every required Phase 1 validation scenario', () => {
-    expect(() =>
-      validatePhase1ValidationMatrix(phase1ValidationMatrix),
-    ).not.toThrow();
+    expect(() => validatePhase1ValidationMatrix(phase1ValidationMatrix)).not.toThrow();
 
-    expect(phase1ValidationMatrix).toHaveLength(
-      PHASE1_VALIDATION_SCENARIOS.length,
-    );
+    expect(phase1ValidationMatrix).toHaveLength(PHASE1_VALIDATION_SCENARIOS.length);
   });
 
   it('requires duplicate-safe recovery scenarios', () => {
@@ -33,9 +29,7 @@ describe('phase1ValidationMatrix', () => {
   });
 
   it('requires persistence for successful recovery', () => {
-    const workerRetry = phase1ValidationMatrix.find(
-      (item) => item.scenario === 'worker-retry',
-    );
+    const workerRetry = phase1ValidationMatrix.find((item) => item.scenario === 'worker-retry');
 
     expect(workerRetry).toMatchObject({
       expectedOutcome: 'success',

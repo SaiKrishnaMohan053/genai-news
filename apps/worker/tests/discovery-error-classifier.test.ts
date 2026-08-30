@@ -1,18 +1,11 @@
-import {
-  GNewsError,
-  RssError,
-} from '@genai-news/tools';
+import { GNewsError, RssError } from '@genai-news/tools';
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import {
-  classifyDiscoveryFailure,
-} from '../src/news/discovery-error-classifier.js';
+import { classifyDiscoveryFailure } from '../src/news/discovery-error-classifier.js';
 
-import {
-  UnsupportedNewsSourceError,
-} from '../src/news/source-registry.js';
+import { UnsupportedNewsSourceError } from '../src/news/source-registry.js';
 
 describe('classifyDiscoveryFailure', () => {
   it('retries source timeout and network failures', () => {
@@ -135,34 +128,22 @@ describe('classifyDiscoveryFailure', () => {
     });
 
     if (parsed.success) {
-      throw new Error(
-        'Expected fixture schema validation to fail.',
-      );
+      throw new Error('Expected fixture schema validation to fail.');
     }
 
-    expect(
-      classifyDiscoveryFailure(parsed.error),
-    ).toEqual({
+    expect(classifyDiscoveryFailure(parsed.error)).toEqual({
       retryable: false,
       reason: 'invalid-job-payload',
     });
 
-    expect(
-      classifyDiscoveryFailure(
-        new UnsupportedNewsSourceError('unknown'),
-      ),
-    ).toEqual({
+    expect(classifyDiscoveryFailure(new UnsupportedNewsSourceError('unknown'))).toEqual({
       retryable: false,
       reason: 'unsupported-source',
     });
   });
 
   it('keeps unknown failures retryable', () => {
-    expect(
-      classifyDiscoveryFailure(
-        new Error('database unavailable'),
-      ),
-    ).toEqual({
+    expect(classifyDiscoveryFailure(new Error('database unavailable'))).toEqual({
       retryable: true,
       reason: 'unknown',
     });

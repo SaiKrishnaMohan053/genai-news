@@ -279,10 +279,7 @@ describe('news discovery worker integration', () => {
         `news-retry-recovery-${Date.now()}`,
       );
 
-      const result = await job.waitUntilFinished(
-        queueEvents,
-        15_000,
-      );
+      const result = await job.waitUntilFinished(queueEvents, 15_000);
 
       expect(result).toMatchObject({
         sourceId: 'gnews',
@@ -338,9 +335,7 @@ describe('news discovery worker integration', () => {
         `news-invalid-response-${Date.now()}`,
       );
 
-      await expect(
-        job.waitUntilFinished(queueEvents, 10_000),
-      ).rejects.toThrow(
+      await expect(job.waitUntilFinished(queueEvents, 10_000)).rejects.toThrow(
         'GNews returned an invalid response.',
       );
 
@@ -394,9 +389,7 @@ describe('news discovery worker integration', () => {
         `news-http-terminal-${Date.now()}`,
       );
 
-      await expect(
-        job.waitUntilFinished(queueEvents, 10_000),
-      ).rejects.toThrow(
+      await expect(job.waitUntilFinished(queueEvents, 10_000)).rejects.toThrow(
         'GNews request failed with HTTP 401.',
       );
 
@@ -460,10 +453,7 @@ describe('news discovery worker integration', () => {
         `news-persistence-recovery-${Date.now()}`,
       );
 
-      const result = await job.waitUntilFinished(
-        queueEvents,
-        15_000,
-      );
+      const result = await job.waitUntilFinished(queueEvents, 15_000);
 
       expect(result).toMatchObject({
         sourceId: 'gnews',
@@ -485,29 +475,20 @@ describe('news discovery worker integration', () => {
   });
 
   it('remains idempotent when a retry follows partial persistence', async () => {
-    fetchLatest.mockResolvedValue(
-      createTwoUniqueSourceResult(),
-    );
+    fetchLatest.mockResolvedValue(createTwoUniqueSourceResult());
 
-    const realRepository =
-      createArticleRepository(database);
+    const realRepository = createArticleRepository(database);
 
     let persistCalls = 0;
 
     const partiallyFailingRepository = {
       ...realRepository,
 
-      async persist(
-        ...args: Parameters<
-          typeof realRepository.persist
-        >
-      ) {
+      async persist(...args: Parameters<typeof realRepository.persist>) {
         persistCalls += 1;
 
         if (persistCalls === 2) {
-          throw new Error(
-            'Temporary failure after partial persistence.',
-          );
+          throw new Error('Temporary failure after partial persistence.');
         }
 
         return realRepository.persist(...args);
@@ -518,8 +499,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
 
-      articleRepository:
-        partiallyFailingRepository,
+      articleRepository: partiallyFailingRepository,
 
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
@@ -527,8 +507,7 @@ describe('news discovery worker integration', () => {
         missingPublishedAt: 'reject',
       },
 
-      now: () =>
-        new Date('2026-08-27T16:00:00.000Z'),
+      now: () => new Date('2026-08-27T16:00:00.000Z'),
     });
 
     try {
@@ -539,17 +518,12 @@ describe('news discovery worker integration', () => {
         {
           sourceId: 'gnews',
           limit: 10,
-          requestedAt:
-            '2026-08-27T15:58:00.000Z',
+          requestedAt: '2026-08-27T15:58:00.000Z',
         },
         `news-partial-persistence-${Date.now()}`,
       );
 
-      const result =
-        await job.waitUntilFinished(
-          queueEvents,
-          15_000,
-        );
+      const result = await job.waitUntilFinished(queueEvents, 15_000);
 
       expect(result).toMatchObject({
         sourceId: 'gnews',
@@ -562,15 +536,12 @@ describe('news discovery worker integration', () => {
 
       expect(persistCalls).toBe(4);
 
-      expect(
-        await database.article.count(),
-      ).toBe(2);
+      expect(await database.article.count()).toBe(2);
 
       expect(
         await database.article.findUnique({
           where: {
-            canonicalUrl:
-              'https://example.com/partial-a',
+            canonicalUrl: 'https://example.com/partial-a',
           },
         }),
       ).not.toBeNull();
@@ -578,15 +549,12 @@ describe('news discovery worker integration', () => {
       expect(
         await database.article.findUnique({
           where: {
-            canonicalUrl:
-              'https://example.com/partial-b',
+            canonicalUrl: 'https://example.com/partial-b',
           },
         }),
       ).not.toBeNull();
 
-      expect(
-        await job.getState(),
-      ).toBe('completed');
+      expect(await job.getState()).toBe('completed');
 
       await job.remove();
     } finally {
