@@ -1,6 +1,17 @@
 import type { NewsSource } from '@genai-news/shared';
 import { GNewsSource } from '@genai-news/tools';
 
+export class UnsupportedNewsSourceError extends Error {
+  readonly sourceId: string;
+
+  constructor(sourceId: string) {
+    super(`Unsupported news source: ${sourceId}`);
+
+    this.name = 'UnsupportedNewsSourceError';
+    this.sourceId = sourceId;
+  }
+}
+
 export interface NewsSourceRegistry {
   get(sourceId: string): NewsSource;
 }
@@ -9,7 +20,9 @@ export interface NewsSourceRegistryOptions {
   gnewsApiKey: string;
 }
 
-export function createNewsSourceRegistry(options: NewsSourceRegistryOptions): NewsSourceRegistry {
+export function createNewsSourceRegistry(
+  options: NewsSourceRegistryOptions,
+): NewsSourceRegistry {
   const sources = new Map<string, NewsSource>([
     [
       'gnews',
@@ -24,7 +37,7 @@ export function createNewsSourceRegistry(options: NewsSourceRegistryOptions): Ne
       const source = sources.get(sourceId);
 
       if (!source) {
-        throw new Error(`Unsupported news source: ${sourceId}`);
+        throw new UnsupportedNewsSourceError(sourceId);
       }
 
       return source;

@@ -1,5 +1,10 @@
 import type { ArticleRepository } from '@genai-news/database';
-import { runWithSpan, type NewsDiscoveryMetrics } from '@genai-news/observability';
+import {
+  emitStructuredEvent,
+  runWithSpan,
+  type NewsDiscoveryMetrics,
+  type StructuredEventLogger,
+} from '@genai-news/observability';
 import {
   NEWS_DISCOVERY_JOB_NAME,
   NEWS_DISCOVERY_QUEUE_NAME,
@@ -7,9 +12,11 @@ import {
 } from '@genai-news/queue';
 import type { NewsDiscoveryJobPayload } from '@genai-news/schemas';
 import type { FreshnessPolicy } from '@genai-news/shared';
-import { type Job, Worker } from 'bullmq';
+import { type Job, UnrecoverableError, Worker } from 'bullmq';
 
 import { processNewsDiscovery, type NewsDiscoveryResult } from './jobs/news-discovery.js';
+import { classifyDiscoveryFailure } from './news/discovery-error-classifier.js';
+import { annotateDiscoveryFailureSpan } from './news/discovery-failure-observability.js';
 import type { NewsSourceRegistry } from './news/source-registry.js';
 
 export type CreateNewsDiscoveryWorkerOptions = {
@@ -18,6 +25,7 @@ export type CreateNewsDiscoveryWorkerOptions = {
   articleRepository: ArticleRepository;
   freshnessPolicy: FreshnessPolicy;
   metrics?: NewsDiscoveryMetrics;
+  logger?: StructuredEventLogger;
   now?: () => Date;
 };
 
@@ -55,41 +63,68 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
           },
 
           async (span) => {
-            const discoveryResult = await processNewsDiscovery(job.data, {
-              sourceRegistry: options.sourceRegistry,
+            try {
+              const discoveryResult = await processNewsDiscovery(job.data, {
+                sourceRegistry: options.sourceRegistry,
 
-              articleRepository: options.articleRepository,
+                articleRepository: options.articleRepository,
 
-              freshnessPolicy: options.freshnessPolicy,
+                freshnessPolicy: options.freshnessPolicy,
 
-              ...(options.metrics
-                ? {
-                    metrics: options.metrics,
-                  }
-                : {}),
+                ...(options.metrics
+                  ? {
+                      metrics: options.metrics,
+                    }
+                  : {}),
 
-              ...(options.now
-                ? {
-                    now: options.now,
-                  }
-                : {}),
-            });
+                ...(options.now
+                  ? {
+                      now: options.now,
+                    }
+                  : {}),
+              });
 
-            span.setAttribute('news.fetched_count', discoveryResult.fetchedCount);
+              span.setAttribute(
+                'news.fetched_count',
+                discoveryResult.fetchedCount,
+              );
 
-            span.setAttribute('news.normalized_count', discoveryResult.normalizedCount);
+              span.setAttribute(
+                'news.normalized_count',
+                discoveryResult.normalizedCount,
+              );
 
-            span.setAttribute('news.fresh_count', discoveryResult.freshCount);
+              span.setAttribute(
+                'news.fresh_count',
+                discoveryResult.freshCount,
+              );
 
-            span.setAttribute('news.unique_count', discoveryResult.uniqueCount);
+              span.setAttribute(
+                'news.unique_count',
+                discoveryResult.uniqueCount,
+              );
 
-            span.setAttribute('news.persisted_count', discoveryResult.persistedCount);
+              span.setAttribute(
+                'news.persisted_count',
+                discoveryResult.persistedCount,
+              );
 
-            return discoveryResult;
+              return discoveryResult;
+            } catch (error) {
+              const classification = classifyDiscoveryFailure(error);
+
+              annotateDiscoveryFailureSpan(
+                span,
+                classification,
+              );
+
+              throw error;
+            }
           },
         );
 
-        const discoveryDurationSeconds = (performance.now() - discoveryStartedAt) / 1000;
+        const discoveryDurationSeconds =
+          (performance.now() - discoveryStartedAt) / 1000;
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
@@ -105,7 +140,8 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
         return result;
       } catch (error) {
-        const discoveryDurationSeconds = (performance.now() - discoveryStartedAt) / 1000;
+        const discoveryDurationSeconds =
+          (performance.now() - discoveryStartedAt) / 1000;
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
@@ -118,6 +154,38 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
           },
           discoveryDurationSeconds,
         );
+
+        const classification = classifyDiscoveryFailure(error);
+
+        if (options.logger) {
+          emitStructuredEvent({
+            logger: options.logger,
+            event: 'news.discovery.failed',
+            level: 'error',
+
+            attributes: {
+              sourceId,
+              failureReason: classification.reason,
+              retryable: classification.retryable,
+
+              ...(job.id
+                ? {
+                    jobId: job.id,
+                  }
+                : {}),
+            },
+
+            error,
+          });
+        }
+
+        if (!classification.retryable) {
+          throw new UnrecoverableError(
+            error instanceof Error
+              ? error.message
+              : 'Unrecoverable news discovery failure.',
+          );
+        }
 
         throw error;
       }
