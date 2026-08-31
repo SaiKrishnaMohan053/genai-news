@@ -136,6 +136,43 @@ export type StoryCandidateGenerationResult = {
 };
 
 /**
+ * Independent deterministic evidence produced when comparing two persisted
+ * article feature sets.
+ *
+ * No composite score or clustering decision is implied by these values.
+ */
+export type StoryPairwiseSimilaritySignals = {
+  /**
+   * Jaccard similarity over unique title tokens.
+   *
+   * Range: [0, 1]
+   */
+  titleTokenJaccard: number;
+
+  /**
+   * Token-level longest-common-subsequence similarity normalized by the
+   * larger token sequence.
+   *
+   * Range: [0, 1]
+   */
+  titleTokenOrderSimilarity: number;
+
+  /**
+   * Absolute publication-time distance in milliseconds.
+   *
+   * Null means one or both articles do not have a publication timestamp.
+   */
+  publicationTimeDistanceMs: number | null;
+};
+
+export type StoryPairwiseSimilarityResult = {
+  leftArticleId: StoryArticleId;
+  rightArticleId: StoryArticleId;
+
+  signals: StoryPairwiseSimilaritySignals;
+};
+
+/**
  * Identifies the deterministic clustering implementation that produced a
  * decision or membership.
  *
