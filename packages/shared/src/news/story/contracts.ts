@@ -71,6 +71,71 @@ export type StoryFeatures = {
 };
 
 /**
+ * Minimal canonical-story state required by candidate generation.
+ *
+ * Candidate generation deliberately does not depend on story members,
+ * representatives, similarity scores, or persistence-specific timestamps.
+ */
+export type StoryCandidate = {
+  storyId: StoryId;
+
+  firstPublishedAt: Date | null;
+  lastPublishedAt: Date | null;
+};
+
+/**
+ * Configurable deterministic candidate-generation policy.
+ *
+ * Phase 2.4 deliberately defines no production default. Candidate-window
+ * values must later be selected using evaluation evidence.
+ */
+export type StoryCandidateGenerationPolicy = {
+  maxTimeDistanceMs: number;
+
+  /**
+   * Conservative behavior when either the incoming article or candidate story
+   * lacks enough publication-time information to calculate temporal distance.
+   */
+  includeWhenTimeUnknown: boolean;
+};
+
+export const STORY_CANDIDATE_REASONS = [
+  'within-time-window',
+  'time-overlap',
+  'time-unknown',
+  'outside-time-window',
+] as const;
+
+export type StoryCandidateReason = (typeof STORY_CANDIDATE_REASONS)[number];
+
+export type StoryCandidateDecision = {
+  storyId: StoryId;
+
+  included: boolean;
+
+  reason: StoryCandidateReason;
+
+  /**
+   * Distance from the article publication timestamp to the nearest edge of
+   * the candidate story's publication interval.
+   *
+   * Zero means the article timestamp falls inside the story interval.
+   * Null means temporal distance could not be calculated.
+   */
+  timeDistanceMs: number | null;
+};
+
+export type StoryCandidateGenerationResult = {
+  candidates: readonly StoryCandidate[];
+
+  decisions: readonly StoryCandidateDecision[];
+
+  totalStories: number;
+  candidateCount: number;
+  excludedCount: number;
+};
+
+/**
  * Identifies the deterministic clustering implementation that produced a
  * decision or membership.
  *
