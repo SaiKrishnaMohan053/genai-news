@@ -105,9 +105,7 @@ describe('story domain invariants', () => {
         reason: 'Invalid signal.',
         clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
       }),
-    ).toThrow(
-      'Story match signal "invalidSignal" must be a finite number between 0 and 1.',
-    );
+    ).toThrow('Story match signal "invalidSignal" must be a finite number between 0 and 1.');
   });
 
   it('accepts seed membership without a fabricated similarity decision', () => {
@@ -162,8 +160,6 @@ describe('story domain invariants', () => {
           },
         },
       }),
-    ).toThrow(
-      'Matched story membership must contain a positive match decision.',
-    );
+    ).toThrow('Matched story membership must contain a positive match decision.');
   });
 });

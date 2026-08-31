@@ -46,10 +46,7 @@ export function assertStoryArticleMembership(membership: StoryArticleMembership)
   assertNonEmptyString(membership.articleId, 'Story membership articleId');
 
   if (membership.provenance.kind === 'seed') {
-    assertNonEmptyString(
-      membership.provenance.clusteringVersion,
-      'Story seed clusteringVersion',
-    );
+    assertNonEmptyString(membership.provenance.clusteringVersion, 'Story seed clusteringVersion');
 
     return;
   }
