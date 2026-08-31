@@ -15,6 +15,62 @@ export type StoryId = string;
 export type StoryArticleId = string;
 
 /**
+ * Minimal persisted-article shape required by deterministic story feature
+ * extraction.
+ *
+ * This intentionally avoids importing Prisma or @genai-news/database so the
+ * story capability remains a pure shared-domain dependency.
+ */
+export type StoryFeatureArticle = {
+  id: StoryArticleId;
+
+  title: string;
+
+  publishedAt: Date | null;
+
+  publisherName: string | null;
+};
+
+/**
+ * Deterministic lexical and metadata features prepared for later story
+ * candidate generation and similarity analysis.
+ *
+ * Feature extraction does not calculate similarity, weights, thresholds, or
+ * clustering decisions.
+ */
+export type StoryFeatures = {
+  articleId: StoryArticleId;
+
+  /**
+   * Human-readable title after the existing Phase 1 text normalization
+   * contract: NFC + whitespace normalization + trim.
+   */
+  title: string;
+
+  /**
+   * Case-normalized lexical representation of title.
+   *
+   * Punctuation is preserved here. Token extraction handles lexical
+   * boundaries separately so the feature layer does not unnecessarily erase
+   * information.
+   */
+  normalizedTitle: string;
+
+  /**
+   * Ordered lexical tokens.
+   *
+   * Order and duplicates are intentionally preserved so later similarity
+   * algorithms can choose whether they need sequence, frequency, or set
+   * semantics.
+   */
+  titleTokens: readonly string[];
+
+  publishedAt: Date | null;
+
+  publisherName: string | null;
+};
+
+/**
  * Identifies the deterministic clustering implementation that produced a
  * decision or membership.
  *
