@@ -13,7 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
-    "news:baseline": "node dist/news/run-phase1-baseline.js"
+    "news:baseline": "node dist/news/run-phase1-baseline.js",
+    "phase2:signals": "node dist/news/story-clustering/run-phase2-signal-analysis.js",
+    "phase2:semantic": "node dist/news/story-clustering/run-phase2-semantic-analysis.js"
   },
   "dependencies": {
     "@genai-news/shared": "workspace:*"
