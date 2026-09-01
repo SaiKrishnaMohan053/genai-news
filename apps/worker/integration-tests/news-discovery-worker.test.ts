@@ -20,6 +20,7 @@ import type { NewsSourceRegistry } from '../src/news/source-registry.js';
 
 const redisUrl = process.env.REDIS_URL;
 const databaseUrl = process.env.DATABASE_URL;
+const integrationArticleUrlPrefix = 'https://example.com/';
 
 if (!redisUrl) {
   throw new Error('REDIS_URL is required for worker integration tests');
@@ -34,6 +35,16 @@ const logger = {
   warn: vi.fn(),
   error: vi.fn(),
 };
+
+async function countWorkerIntegrationArticles(database: DatabaseClient): Promise<number> {
+  return database.article.count({
+    where: {
+      canonicalUrl: {
+        startsWith: integrationArticleUrlPrefix,
+      },
+    },
+  });
+}
 
 describe('news discovery worker integration', () => {
   const producerRedis = createRedisClient(redisUrl);
@@ -81,7 +92,13 @@ describe('news discovery worker integration', () => {
   });
 
   beforeEach(async () => {
-    await database.article.deleteMany();
+    await database.article.deleteMany({
+      where: {
+        canonicalUrl: {
+          startsWith: integrationArticleUrlPrefix,
+        },
+      },
+    });
 
     await queue.drain(true);
 
@@ -93,7 +110,13 @@ describe('news discovery worker integration', () => {
   });
 
   afterAll(async () => {
-    await database.article.deleteMany();
+    await database.article.deleteMany({
+      where: {
+        canonicalUrl: {
+          startsWith: integrationArticleUrlPrefix,
+        },
+      },
+    });
 
     await queueEvents.close();
     await queue.close();
@@ -157,7 +180,7 @@ describe('news discovery worker integration', () => {
         persistedCount: 1,
       });
 
-      expect(await database.article.count()).toBe(1);
+      expect(await countWorkerIntegrationArticles(database)).toBe(1);
 
       const persisted = await database.article.findUnique({
         where: {
@@ -223,7 +246,7 @@ describe('news discovery worker integration', () => {
 
       await second.waitUntilFinished(queueEvents, 10_000);
 
-      expect(await database.article.count()).toBe(1);
+      expect(await countWorkerIntegrationArticles(database)).toBe(1);
 
       expect(fetchLatest).toHaveBeenCalledTimes(2);
 
@@ -290,7 +313,7 @@ describe('news discovery worker integration', () => {
 
       expect(await job.getState()).toBe('completed');
 
-      expect(await database.article.count()).toBe(1);
+      expect(await countWorkerIntegrationArticles(database)).toBe(1);
 
       await job.remove();
     } finally {
@@ -343,7 +366,7 @@ describe('news discovery worker integration', () => {
 
       expect(await job.getState()).toBe('failed');
 
-      expect(await database.article.count()).toBe(0);
+      expect(await countWorkerIntegrationArticles(database)).toBe(0);
 
       await job.remove();
     } finally {
@@ -397,7 +420,7 @@ describe('news discovery worker integration', () => {
 
       expect(await job.getState()).toBe('failed');
 
-      expect(await database.article.count()).toBe(0);
+      expect(await countWorkerIntegrationArticles(database)).toBe(0);
 
       await job.remove();
     } finally {
@@ -464,7 +487,7 @@ describe('news discovery worker integration', () => {
 
       expect(fetchLatest).toHaveBeenCalledTimes(3);
 
-      expect(await database.article.count()).toBe(1);
+      expect(await countWorkerIntegrationArticles(database)).toBe(1);
 
       expect(await job.getState()).toBe('completed');
 
@@ -536,7 +559,7 @@ describe('news discovery worker integration', () => {
 
       expect(persistCalls).toBe(4);
 
-      expect(await database.article.count()).toBe(2);
+      expect(await countWorkerIntegrationArticles(database)).toBe(2);
 
       expect(
         await database.article.findUnique({
