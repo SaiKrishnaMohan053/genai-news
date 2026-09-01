@@ -5,3 +5,4 @@ export * from './invariants.js';
 export * from './similarity.js';
 export * from './decision-policy.js';
 export * from './cluster-assignment.js';
+export * from './identity-policy.js';
