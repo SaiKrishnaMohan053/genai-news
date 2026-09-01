@@ -432,6 +432,284 @@ describe('story repository integration', () => {
       }),
     ).rejects.toBeInstanceOf(StoryPersistenceConflictError);
   });
+
+  it('allows only one story to win concurrent conflicting assignment', async () => {
+    const seedA = await persistArticle(
+      'race-seed-a',
+      'Race story A',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const seedB = await persistArticle(
+      'race-seed-b',
+      'Race story B',
+      new Date('2026-09-01T10:01:00.000Z'),
+    );
+
+    const contested = await persistArticle(
+      'race-contested',
+      'Contested coverage',
+      new Date('2026-09-01T10:05:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    await repository.createSeedStory({
+      storyId: storyId('story-race-a'),
+
+      seedArticleId: articleId(seedA.id),
+
+      canonicalTitle: seedA.title,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    await repository.createSeedStory({
+      storyId: storyId('story-race-b'),
+
+      seedArticleId: articleId(seedB.id),
+
+      canonicalTitle: seedB.title,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    const results = await Promise.allSettled([
+      repository.addMatchedMembership({
+        storyId: storyId('story-race-a'),
+
+        articleId: articleId(contested.id),
+
+        representativeArticleId: articleId(seedA.id),
+
+        matchDecision: decideStoryMatchV1(0.84),
+      }),
+
+      repository.addMatchedMembership({
+        storyId: storyId('story-race-b'),
+
+        articleId: articleId(contested.id),
+
+        representativeArticleId: articleId(seedB.id),
+
+        matchDecision: decideStoryMatchV1(0.85),
+      }),
+    ]);
+
+    const fulfilled = results.filter(
+      (
+        result,
+      ): result is PromiseFulfilledResult<
+        Awaited<ReturnType<typeof repository.addMatchedMembership>>
+      > => result.status === 'fulfilled',
+    );
+
+    const rejected = results.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+
+    expect(fulfilled).toHaveLength(1);
+
+    expect(rejected).toHaveLength(1);
+
+    expect(rejected[0]?.reason).toBeInstanceOf(StoryPersistenceConflictError);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: contested.id,
+        },
+      }),
+    ).toBe(1);
+
+    const persisted = await repository.findMembershipByArticleId(articleId(contested.id));
+
+    expect(['story-race-a', 'story-race-b']).toContain(persisted?.storyId);
+  });
+  it('adds the same matched membership concurrently without duplicates', async () => {
+    const seed = await persistArticle(
+      'concurrent-match-seed',
+      'Concurrent match seed',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const matched = await persistArticle(
+      'concurrent-match-article',
+      'Concurrent matching coverage',
+      new Date('2026-09-01T11:00:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    await repository.createSeedStory({
+      storyId: storyId('story-concurrent-match'),
+
+      seedArticleId: articleId(seed.id),
+
+      canonicalTitle: seed.title,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    const input = {
+      storyId: storyId('story-concurrent-match'),
+
+      articleId: articleId(matched.id),
+
+      representativeArticleId: articleId(seed.id),
+
+      matchDecision: decideStoryMatchV1(0.84),
+    };
+
+    const results = await Promise.all([
+      repository.addMatchedMembership(input),
+
+      repository.addMatchedMembership(input),
+    ]);
+
+    expect(results.map((result) => result.created).sort()).toEqual([false, true]);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: matched.id,
+        },
+      }),
+    ).toBe(1);
+
+    const story = await repository.findById(storyId('story-concurrent-match'));
+
+    expect(story?.firstPublishedAt).toEqual(new Date('2026-09-01T10:00:00.000Z'));
+
+    expect(story?.lastPublishedAt).toEqual(new Date('2026-09-01T11:00:00.000Z'));
+  });
+
+  it('does not persist a partial story when the seed article is missing', async () => {
+    const repository = createStoryRepository(database);
+
+    await expect(
+      repository.createSeedStory({
+        storyId: storyId('story-missing-seed'),
+
+        seedArticleId: articleId('missing-article'),
+
+        canonicalTitle: 'Missing seed',
+
+        clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+      }),
+    ).rejects.toThrow('Cannot seed story from missing article');
+
+    expect(
+      await database.story.count({
+        where: {
+          id: 'story-missing-seed',
+        },
+      }),
+    ).toBe(0);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          storyId: 'story-missing-seed',
+        },
+      }),
+    ).toBe(0);
+  });
+
+  it('does not mutate the temporal envelope when matched membership persistence fails', async () => {
+    const seed = await persistArticle(
+      'rollback-seed',
+      'Rollback seed',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    await repository.createSeedStory({
+      storyId: storyId('story-rollback'),
+
+      seedArticleId: articleId(seed.id),
+
+      canonicalTitle: seed.title,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    await expect(
+      repository.addMatchedMembership({
+        storyId: storyId('story-rollback'),
+
+        articleId: articleId('missing-matched-article'),
+
+        representativeArticleId: articleId(seed.id),
+
+        matchDecision: decideStoryMatchV1(0.9),
+      }),
+    ).rejects.toThrow('Cannot add missing article to story');
+
+    const story = await repository.findById(storyId('story-rollback'));
+
+    expect(story?.firstPublishedAt).toEqual(new Date('2026-09-01T10:00:00.000Z'));
+
+    expect(story?.lastPublishedAt).toEqual(new Date('2026-09-01T10:00:00.000Z'));
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          storyId: 'story-rollback',
+        },
+      }),
+    ).toBe(1);
+  });
+  it('creates the same seed story concurrently without duplicate state', async () => {
+    const seed = await persistArticle(
+      'concurrent-seed',
+      'Concurrent seed',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    const input = {
+      storyId: storyId('story-concurrent-seed'),
+
+      seedArticleId: articleId(seed.id),
+
+      canonicalTitle: seed.title,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    };
+
+    const results = await Promise.all([
+      repository.createSeedStory(input),
+
+      repository.createSeedStory(input),
+    ]);
+
+    expect(results.map((result) => result.created).sort()).toEqual([false, true]);
+
+    expect(
+      await database.story.count({
+        where: {
+          id: 'story-concurrent-seed',
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: seed.id,
+        },
+      }),
+    ).toBe(1);
+
+    const persisted = await repository.findById(storyId('story-concurrent-seed'));
+
+    expect(persisted?.seedArticleId).toBe(seed.id);
+
+    expect(persisted?.representativeArticleId).toBe(seed.id);
+  });
 });
 
 async function persistArticle(suffix: string, title: string, publishedAt: Date | null) {

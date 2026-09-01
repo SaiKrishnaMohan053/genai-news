@@ -103,241 +103,257 @@ export function createStoryRepository(database: DatabaseClient): StoryRepository
     async createSeedStory(input): Promise<SeedStoryPersistenceResult> {
       validateSeedInput(input);
 
-      return database.$transaction(async (transaction) => {
-        const seedArticle = await transaction.article.findUnique({
-          where: {
-            id: input.seedArticleId,
-          },
+      try {
+        return await database.$transaction(async (transaction) => {
+          const seedArticle = await transaction.article.findUnique({
+            where: {
+              id: input.seedArticleId,
+            },
 
-          select: {
-            id: true,
-            publishedAt: true,
-          },
-        });
+            select: {
+              id: true,
+              publishedAt: true,
+            },
+          });
 
-        if (seedArticle === null) {
-          throw new Error(`Cannot seed story from missing article: ${input.seedArticleId}`);
-        }
+          if (seedArticle === null) {
+            throw new Error(`Cannot seed story from missing article: ${input.seedArticleId}`);
+          }
 
-        const existingStory = await transaction.story.findUnique({
-          where: {
-            id: input.storyId,
-          },
-        });
+          const existingStory = await transaction.story.findUnique({
+            where: {
+              id: input.storyId,
+            },
+          });
 
-        const existingMembership = await transaction.storyMembership.findUnique({
-          where: {
-            articleId: input.seedArticleId,
-          },
-        });
+          const existingMembership = await transaction.storyMembership.findUnique({
+            where: {
+              articleId: input.seedArticleId,
+            },
+          });
 
-        /**
-         * Exact replay.
-         *
-         * The story and its seed membership already
-         * exist exactly as requested, so return the
-         * persisted state without creating anything.
-         */
-        if (existingStory !== null) {
-          assertSeedStoryReplayCompatible(existingStory, existingMembership, input);
+          /**
+           * Exact replay.
+           *
+           * The story and its seed membership already
+           * exist exactly as requested, so return the
+           * persisted state without creating anything.
+           */
+          if (existingStory !== null) {
+            assertSeedStoryReplayCompatible(existingStory, existingMembership, input);
 
-          return {
-            story: mapStory(existingStory),
+            return {
+              story: mapStory(existingStory),
 
-            membership: mapRequiredMembership(existingMembership),
+              membership: mapRequiredMembership(existingMembership),
 
-            created: false,
-          };
-        }
+              created: false,
+            };
+          }
 
-        /**
-         * The article already belongs to some story.
-         * Phase 2 never silently reassigns it.
-         */
-        if (existingMembership !== null) {
-          throw new StoryPersistenceConflictError(
-            [
-              'Seed article already belongs to another story.',
-              `articleId=${input.seedArticleId}`,
-              `existingStoryId=${existingMembership.storyId}`,
-              `requestedStoryId=${input.storyId}`,
-            ].join(' '),
-          );
-        }
-
-        const story = await transaction.story.create({
-          data: {
-            id: input.storyId,
-
-            canonicalTitle: input.canonicalTitle,
-
-            seedArticleId: input.seedArticleId,
-
-            representativeArticleId: input.seedArticleId,
-
-            clusteringVersion: input.clusteringVersion,
-
-            firstPublishedAt: seedArticle.publishedAt,
-
-            lastPublishedAt: seedArticle.publishedAt,
-          },
-        });
-
-        const membership = await transaction.storyMembership.create({
-          data: {
-            storyId: input.storyId,
-
-            articleId: input.seedArticleId,
-
-            kind: 'SEED',
-
-            score: null,
-            reason: null,
-
-            matchedAgainstArticleId: null,
-
-            clusteringVersion: input.clusteringVersion,
-          },
-        });
-
-        return {
-          story: mapStory(story),
-
-          membership: mapMembership(membership),
-
-          created: true,
-        };
-      });
-    },
-
-    async addMatchedMembership(input): Promise<MatchedStoryMembershipPersistenceResult> {
-      validateMatchedInput(input);
-
-      return database.$transaction(async (transaction) => {
-        const story = await transaction.story.findUnique({
-          where: {
-            id: input.storyId,
-          },
-        });
-
-        if (story === null) {
-          throw new Error(`Cannot add membership to missing story: ${input.storyId}`);
-        }
-
-        if (story.clusteringVersion !== input.matchDecision.clusteringVersion) {
-          throw new StoryPersistenceConflictError(
-            [
-              'Story clustering version does not match membership decision.',
-              `storyId=${story.id}`,
-              `storyVersion=${story.clusteringVersion}`,
-              `decisionVersion=${input.matchDecision.clusteringVersion}`,
-            ].join(' '),
-          );
-        }
-
-        if (story.representativeArticleId !== input.representativeArticleId) {
-          throw new StoryPersistenceConflictError(
-            [
-              'Matched-against article is not the persisted story representative.',
-              `storyId=${story.id}`,
-              `expectedRepresentative=${story.representativeArticleId}`,
-              `actualRepresentative=${input.representativeArticleId}`,
-            ].join(' '),
-          );
-        }
-
-        const article = await transaction.article.findUnique({
-          where: {
-            id: input.articleId,
-          },
-
-          select: {
-            id: true,
-            publishedAt: true,
-          },
-        });
-
-        if (article === null) {
-          throw new Error(`Cannot add missing article to story: ${input.articleId}`);
-        }
-
-        const existingMembership = await transaction.storyMembership.findUnique({
-          where: {
-            articleId: input.articleId,
-          },
-        });
-
-        if (existingMembership !== null) {
-          if (existingMembership.storyId !== input.storyId) {
+          /**
+           * The article already belongs to some story.
+           * Phase 2 never silently reassigns it.
+           */
+          if (existingMembership !== null) {
             throw new StoryPersistenceConflictError(
               [
-                'Article already belongs to another story.',
-                `articleId=${input.articleId}`,
+                'Seed article already belongs to another story.',
+                `articleId=${input.seedArticleId}`,
                 `existingStoryId=${existingMembership.storyId}`,
                 `requestedStoryId=${input.storyId}`,
               ].join(' '),
             );
           }
 
-          assertMatchedMembershipReplayCompatible(existingMembership, input);
+          const story = await transaction.story.create({
+            data: {
+              id: input.storyId,
+
+              canonicalTitle: input.canonicalTitle,
+
+              seedArticleId: input.seedArticleId,
+
+              representativeArticleId: input.seedArticleId,
+
+              clusteringVersion: input.clusteringVersion,
+
+              firstPublishedAt: seedArticle.publishedAt,
+
+              lastPublishedAt: seedArticle.publishedAt,
+            },
+          });
+
+          const membership = await transaction.storyMembership.create({
+            data: {
+              storyId: input.storyId,
+
+              articleId: input.seedArticleId,
+
+              kind: 'SEED',
+
+              score: null,
+              reason: null,
+
+              matchedAgainstArticleId: null,
+
+              clusteringVersion: input.clusteringVersion,
+            },
+          });
 
           return {
             story: mapStory(story),
 
-            membership: mapMembership(existingMembership),
+            membership: mapMembership(membership),
 
-            created: false,
+            created: true,
           };
+        });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) {
+          throw error;
         }
 
-        const membership = await transaction.storyMembership.create({
-          data: {
-            storyId: input.storyId,
+        return recoverConcurrentSeedStory(database, input);
+      }
+    },
 
-            articleId: input.articleId,
+    async addMatchedMembership(input): Promise<MatchedStoryMembershipPersistenceResult> {
+      validateMatchedInput(input);
 
-            kind: 'MATCHED',
+      try {
+        return await database.$transaction(async (transaction) => {
+          const story = await transaction.story.findUnique({
+            where: {
+              id: input.storyId,
+            },
+          });
 
-            score: input.matchDecision.score,
+          if (story === null) {
+            throw new Error(`Cannot add membership to missing story: ${input.storyId}`);
+          }
 
-            signals: toJsonObject(input.matchDecision.signals),
+          if (story.clusteringVersion !== input.matchDecision.clusteringVersion) {
+            throw new StoryPersistenceConflictError(
+              [
+                'Story clustering version does not match membership decision.',
+                `storyId=${story.id}`,
+                `storyVersion=${story.clusteringVersion}`,
+                `decisionVersion=${input.matchDecision.clusteringVersion}`,
+              ].join(' '),
+            );
+          }
 
-            reason: input.matchDecision.reason,
+          if (story.representativeArticleId !== input.representativeArticleId) {
+            throw new StoryPersistenceConflictError(
+              [
+                'Matched-against article is not the persisted story representative.',
+                `storyId=${story.id}`,
+                `expectedRepresentative=${story.representativeArticleId}`,
+                `actualRepresentative=${input.representativeArticleId}`,
+              ].join(' '),
+            );
+          }
 
-            matchedAgainstArticleId: input.representativeArticleId,
+          const article = await transaction.article.findUnique({
+            where: {
+              id: input.articleId,
+            },
 
-            clusteringVersion: input.matchDecision.clusteringVersion,
-          },
+            select: {
+              id: true,
+              publishedAt: true,
+            },
+          });
+
+          if (article === null) {
+            throw new Error(`Cannot add missing article to story: ${input.articleId}`);
+          }
+
+          const existingMembership = await transaction.storyMembership.findUnique({
+            where: {
+              articleId: input.articleId,
+            },
+          });
+
+          if (existingMembership !== null) {
+            if (existingMembership.storyId !== input.storyId) {
+              throw new StoryPersistenceConflictError(
+                [
+                  'Article already belongs to another story.',
+                  `articleId=${input.articleId}`,
+                  `existingStoryId=${existingMembership.storyId}`,
+                  `requestedStoryId=${input.storyId}`,
+                ].join(' '),
+              );
+            }
+
+            assertMatchedMembershipReplayCompatible(existingMembership, input);
+
+            return {
+              story: mapStory(story),
+
+              membership: mapMembership(existingMembership),
+
+              created: false,
+            };
+          }
+
+          const membership = await transaction.storyMembership.create({
+            data: {
+              storyId: input.storyId,
+
+              articleId: input.articleId,
+
+              kind: 'MATCHED',
+
+              score: input.matchDecision.score,
+
+              signals: toJsonObject(input.matchDecision.signals),
+
+              reason: input.matchDecision.reason,
+
+              matchedAgainstArticleId: input.representativeArticleId,
+
+              clusteringVersion: input.matchDecision.clusteringVersion,
+            },
+          });
+
+          const envelope = expandTemporalEnvelope(
+            story.firstPublishedAt,
+            story.lastPublishedAt,
+            article.publishedAt,
+          );
+
+          const updatedStory = envelope.changed
+            ? await transaction.story.update({
+                where: {
+                  id: story.id,
+                },
+
+                data: {
+                  firstPublishedAt: envelope.firstPublishedAt,
+
+                  lastPublishedAt: envelope.lastPublishedAt,
+                },
+              })
+            : story;
+
+          return {
+            story: mapStory(updatedStory),
+
+            membership: mapMembership(membership),
+
+            created: true,
+          };
         });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) {
+          throw error;
+        }
 
-        const envelope = expandTemporalEnvelope(
-          story.firstPublishedAt,
-          story.lastPublishedAt,
-          article.publishedAt,
-        );
-
-        const updatedStory = envelope.changed
-          ? await transaction.story.update({
-              where: {
-                id: story.id,
-              },
-
-              data: {
-                firstPublishedAt: envelope.firstPublishedAt,
-
-                lastPublishedAt: envelope.lastPublishedAt,
-              },
-            })
-          : story;
-
-        return {
-          story: mapStory(updatedStory),
-
-          membership: mapMembership(membership),
-
-          created: true,
-        };
-      });
+        return recoverConcurrentMatchedMembership(database, input);
+      }
     },
 
     async findById(storyId): Promise<PersistedStory | null> {
@@ -462,6 +478,131 @@ function assertMatchedMembershipReplayCompatible(
       ].join(' '),
     );
   }
+}
+
+async function recoverConcurrentSeedStory(
+  database: DatabaseClient,
+  input: CreateSeedStoryInput,
+): Promise<SeedStoryPersistenceResult> {
+  const story = await database.story.findUnique({
+    where: {
+      id: input.storyId,
+    },
+  });
+
+  const membership = await database.storyMembership.findUnique({
+    where: {
+      articleId: input.seedArticleId,
+    },
+  });
+
+  /**
+   * Another concurrent transaction may have won
+   * with exactly the same seed-story request.
+   */
+  if (story !== null) {
+    assertSeedStoryReplayCompatible(story, membership, input);
+
+    return {
+      story: mapStory(story),
+
+      membership: mapRequiredMembership(membership),
+
+      created: false,
+    };
+  }
+
+  /**
+   * The story id does not exist, but the seed article
+   * already belongs to another story.
+   */
+  if (membership !== null) {
+    throw new StoryPersistenceConflictError(
+      [
+        'Seed article already belongs to another story.',
+        `articleId=${input.seedArticleId}`,
+        `existingStoryId=${membership.storyId}`,
+        `requestedStoryId=${input.storyId}`,
+      ].join(' '),
+    );
+  }
+
+  /**
+   * PostgreSQL reported a uniqueness conflict, but the
+   * resulting persisted state cannot be reconciled with
+   * this request.
+   */
+  throw new StoryPersistenceConflictError(
+    [
+      'Concurrent seed-story persistence conflicted with existing state.',
+      `storyId=${input.storyId}`,
+      `seedArticleId=${input.seedArticleId}`,
+    ].join(' '),
+  );
+}
+
+async function recoverConcurrentMatchedMembership(
+  database: DatabaseClient,
+  input: AddMatchedStoryMembershipInput,
+): Promise<MatchedStoryMembershipPersistenceResult> {
+  const story = await database.story.findUnique({
+    where: {
+      id: input.storyId,
+    },
+  });
+
+  if (story === null) {
+    throw new StoryPersistenceConflictError(
+      `Story disappeared during concurrent membership persistence: ${input.storyId}`,
+    );
+  }
+
+  const membership = await database.storyMembership.findUnique({
+    where: {
+      articleId: input.articleId,
+    },
+  });
+
+  if (membership === null) {
+    throw new StoryPersistenceConflictError(
+      [
+        'Concurrent matched membership failed without recoverable persisted membership.',
+        `storyId=${input.storyId}`,
+        `articleId=${input.articleId}`,
+      ].join(' '),
+    );
+  }
+
+  /**
+   * A different story won the concurrent assignment race.
+   * Phase 2 never silently reassigns the article.
+   */
+  if (membership.storyId !== input.storyId) {
+    throw new StoryPersistenceConflictError(
+      [
+        'Article already belongs to another story.',
+        `articleId=${input.articleId}`,
+        `existingStoryId=${membership.storyId}`,
+        `requestedStoryId=${input.storyId}`,
+      ].join(' '),
+    );
+  }
+
+  /**
+   * The same story won the race.
+   *
+   * Treat this as an idempotent replay only when all
+   * persisted provenance exactly matches this request.
+   */
+  assertMatchedMembershipReplayCompatible(membership, input);
+
+  return {
+    story: mapStory(story),
+
+    membership: mapMembership(membership),
+
+    created: false,
+  };
 }
 
 function expandTemporalEnvelope(
@@ -642,4 +783,8 @@ function assertNormalizedText(value: string, label: string): void {
   if (value !== value.trim()) {
     throw new Error(`${label} must already be normalized.`);
   }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }
