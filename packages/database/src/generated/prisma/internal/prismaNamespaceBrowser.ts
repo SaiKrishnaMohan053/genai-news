@@ -52,7 +52,9 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   SystemRecord: 'SystemRecord',
-  Article: 'Article'
+  Article: 'Article',
+  Story: 'Story',
+  StoryMembership: 'StoryMembership'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -105,6 +107,37 @@ export const ArticleScalarFieldEnum = {
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const StoryScalarFieldEnum = {
+  id: 'id',
+  canonicalTitle: 'canonicalTitle',
+  seedArticleId: 'seedArticleId',
+  representativeArticleId: 'representativeArticleId',
+  clusteringVersion: 'clusteringVersion',
+  firstPublishedAt: 'firstPublishedAt',
+  lastPublishedAt: 'lastPublishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StoryScalarFieldEnum = (typeof StoryScalarFieldEnum)[keyof typeof StoryScalarFieldEnum]
+
+
+export const StoryMembershipScalarFieldEnum = {
+  id: 'id',
+  storyId: 'storyId',
+  articleId: 'articleId',
+  kind: 'kind',
+  score: 'score',
+  signals: 'signals',
+  reason: 'reason',
+  matchedAgainstArticleId: 'matchedAgainstArticleId',
+  clusteringVersion: 'clusteringVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type StoryMembershipScalarFieldEnum = (typeof StoryMembershipScalarFieldEnum)[keyof typeof StoryMembershipScalarFieldEnum]
 
 
 export const SortOrder = {

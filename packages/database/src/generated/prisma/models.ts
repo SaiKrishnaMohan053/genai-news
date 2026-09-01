@@ -10,4 +10,6 @@
  */
 export type * from './models/SystemRecord.js'
 export type * from './models/Article.js'
+export type * from './models/Story.js'
+export type * from './models/StoryMembership.js'
 export type * from './commonInputTypes.js'

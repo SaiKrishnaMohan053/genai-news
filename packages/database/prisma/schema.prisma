@@ -7,6 +7,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum StoryMembershipKind {
+  SEED
+  MATCHED
+}
+
 model SystemRecord {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -18,22 +23,22 @@ model SystemRecord {
 }
 
 model Article {
-  id           String @id @default(cuid())
+  id String @id @default(cuid())
 
   title        String
   url          String
   canonicalUrl String @unique
 
-  sourceId     String
-  sourceName   String
-  sourceType   String
+  sourceId   String
+  sourceName String
+  sourceType String
 
   publisherId   String?
   publisherName String?
 
   externalId String?
 
-  publishedAt      DateTime?
+  publishedAt       DateTime?
   firstDiscoveredAt DateTime
   lastSeenAt        DateTime
 
@@ -46,8 +51,67 @@ model Article {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  seededStories      Story[]          @relation("StorySeedArticle")
+  representedStories Story[]          @relation("StoryRepresentativeArticle")
+  storyMembership    StoryMembership?
+
   @@index([sourceId, externalId])
   @@index([publishedAt])
   @@index([lastSeenAt])
   @@map("articles")
+}
+
+model Story {
+  id String @id
+
+  canonicalTitle String
+
+  seedArticleId           String @unique
+  representativeArticleId String @unique
+
+  clusteringVersion String
+
+  firstPublishedAt DateTime?
+  lastPublishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seedArticle           Article @relation("StorySeedArticle", fields: [seedArticleId], references: [id], onDelete: Restrict)
+  representativeArticle Article @relation("StoryRepresentativeArticle", fields: [representativeArticleId], references: [id], onDelete: Restrict)
+
+  memberships StoryMembership[]
+
+  @@index([firstPublishedAt])
+  @@index([lastPublishedAt])
+  @@index([clusteringVersion])
+  @@map("stories")
+}
+
+model StoryMembership {
+  id String @id @default(uuid())
+
+  storyId   String
+  articleId String @unique
+
+  kind StoryMembershipKind
+
+  score Float?
+
+  signals Json?
+
+  reason String?
+
+  matchedAgainstArticleId String?
+
+  clusteringVersion String
+
+  createdAt DateTime @default(now())
+
+  story   Story   @relation(fields: [storyId], references: [id], onDelete: Restrict)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Restrict)
+
+  @@index([storyId])
+  @@index([clusteringVersion])
+  @@map("story_memberships")
 }

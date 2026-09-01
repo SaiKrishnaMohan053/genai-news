@@ -290,6 +290,9 @@ export type ArticleWhereInput = {
   metadata?: Prisma.JsonNullableFilter<"Article">
   createdAt?: Prisma.DateTimeFilter<"Article"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Article"> | Date | string
+  seededStories?: Prisma.StoryListRelationFilter
+  representedStories?: Prisma.StoryListRelationFilter
+  storyMembership?: Prisma.XOR<Prisma.StoryMembershipNullableScalarRelationFilter, Prisma.StoryMembershipWhereInput> | null
 }
 
 export type ArticleOrderByWithRelationInput = {
@@ -312,6 +315,9 @@ export type ArticleOrderByWithRelationInput = {
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  seededStories?: Prisma.StoryOrderByRelationAggregateInput
+  representedStories?: Prisma.StoryOrderByRelationAggregateInput
+  storyMembership?: Prisma.StoryMembershipOrderByWithRelationInput
 }
 
 export type ArticleWhereUniqueInput = Prisma.AtLeast<{
@@ -337,6 +343,9 @@ export type ArticleWhereUniqueInput = Prisma.AtLeast<{
   metadata?: Prisma.JsonNullableFilter<"Article">
   createdAt?: Prisma.DateTimeFilter<"Article"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Article"> | Date | string
+  seededStories?: Prisma.StoryListRelationFilter
+  representedStories?: Prisma.StoryListRelationFilter
+  storyMembership?: Prisma.XOR<Prisma.StoryMembershipNullableScalarRelationFilter, Prisma.StoryMembershipWhereInput> | null
 }, "id" | "canonicalUrl">
 
 export type ArticleOrderByWithAggregationInput = {
@@ -409,6 +418,9 @@ export type ArticleCreateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  seededStories?: Prisma.StoryCreateNestedManyWithoutSeedArticleInput
+  representedStories?: Prisma.StoryCreateNestedManyWithoutRepresentativeArticleInput
+  storyMembership?: Prisma.StoryMembershipCreateNestedOneWithoutArticleInput
 }
 
 export type ArticleUncheckedCreateInput = {
@@ -431,6 +443,9 @@ export type ArticleUncheckedCreateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  seededStories?: Prisma.StoryUncheckedCreateNestedManyWithoutSeedArticleInput
+  representedStories?: Prisma.StoryUncheckedCreateNestedManyWithoutRepresentativeArticleInput
+  storyMembership?: Prisma.StoryMembershipUncheckedCreateNestedOneWithoutArticleInput
 }
 
 export type ArticleUpdateInput = {
@@ -453,6 +468,9 @@ export type ArticleUpdateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUpdateManyWithoutSeedArticleNestedInput
+  representedStories?: Prisma.StoryUpdateManyWithoutRepresentativeArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUpdateOneWithoutArticleNestedInput
 }
 
 export type ArticleUncheckedUpdateInput = {
@@ -475,6 +493,9 @@ export type ArticleUncheckedUpdateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUncheckedUpdateManyWithoutSeedArticleNestedInput
+  representedStories?: Prisma.StoryUncheckedUpdateManyWithoutRepresentativeArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUncheckedUpdateOneWithoutArticleNestedInput
 }
 
 export type ArticleCreateManyInput = {
@@ -607,6 +628,11 @@ export type ArticleMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
+export type ArticleScalarRelationFilter = {
+  is?: Prisma.ArticleWhereInput
+  isNot?: Prisma.ArticleWhereInput
+}
+
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
@@ -615,6 +641,422 @@ export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
 }
 
+export type ArticleCreateNestedOneWithoutSeededStoriesInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutSeededStoriesInput, Prisma.ArticleUncheckedCreateWithoutSeededStoriesInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutSeededStoriesInput
+  connect?: Prisma.ArticleWhereUniqueInput
+}
+
+export type ArticleCreateNestedOneWithoutRepresentedStoriesInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedCreateWithoutRepresentedStoriesInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutRepresentedStoriesInput
+  connect?: Prisma.ArticleWhereUniqueInput
+}
+
+export type ArticleUpdateOneRequiredWithoutSeededStoriesNestedInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutSeededStoriesInput, Prisma.ArticleUncheckedCreateWithoutSeededStoriesInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutSeededStoriesInput
+  upsert?: Prisma.ArticleUpsertWithoutSeededStoriesInput
+  connect?: Prisma.ArticleWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ArticleUpdateToOneWithWhereWithoutSeededStoriesInput, Prisma.ArticleUpdateWithoutSeededStoriesInput>, Prisma.ArticleUncheckedUpdateWithoutSeededStoriesInput>
+}
+
+export type ArticleUpdateOneRequiredWithoutRepresentedStoriesNestedInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedCreateWithoutRepresentedStoriesInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutRepresentedStoriesInput
+  upsert?: Prisma.ArticleUpsertWithoutRepresentedStoriesInput
+  connect?: Prisma.ArticleWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ArticleUpdateToOneWithWhereWithoutRepresentedStoriesInput, Prisma.ArticleUpdateWithoutRepresentedStoriesInput>, Prisma.ArticleUncheckedUpdateWithoutRepresentedStoriesInput>
+}
+
+export type ArticleCreateNestedOneWithoutStoryMembershipInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutStoryMembershipInput, Prisma.ArticleUncheckedCreateWithoutStoryMembershipInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutStoryMembershipInput
+  connect?: Prisma.ArticleWhereUniqueInput
+}
+
+export type ArticleUpdateOneRequiredWithoutStoryMembershipNestedInput = {
+  create?: Prisma.XOR<Prisma.ArticleCreateWithoutStoryMembershipInput, Prisma.ArticleUncheckedCreateWithoutStoryMembershipInput>
+  connectOrCreate?: Prisma.ArticleCreateOrConnectWithoutStoryMembershipInput
+  upsert?: Prisma.ArticleUpsertWithoutStoryMembershipInput
+  connect?: Prisma.ArticleWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ArticleUpdateToOneWithWhereWithoutStoryMembershipInput, Prisma.ArticleUpdateWithoutStoryMembershipInput>, Prisma.ArticleUncheckedUpdateWithoutStoryMembershipInput>
+}
+
+export type ArticleCreateWithoutSeededStoriesInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  representedStories?: Prisma.StoryCreateNestedManyWithoutRepresentativeArticleInput
+  storyMembership?: Prisma.StoryMembershipCreateNestedOneWithoutArticleInput
+}
+
+export type ArticleUncheckedCreateWithoutSeededStoriesInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  representedStories?: Prisma.StoryUncheckedCreateNestedManyWithoutRepresentativeArticleInput
+  storyMembership?: Prisma.StoryMembershipUncheckedCreateNestedOneWithoutArticleInput
+}
+
+export type ArticleCreateOrConnectWithoutSeededStoriesInput = {
+  where: Prisma.ArticleWhereUniqueInput
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutSeededStoriesInput, Prisma.ArticleUncheckedCreateWithoutSeededStoriesInput>
+}
+
+export type ArticleCreateWithoutRepresentedStoriesInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seededStories?: Prisma.StoryCreateNestedManyWithoutSeedArticleInput
+  storyMembership?: Prisma.StoryMembershipCreateNestedOneWithoutArticleInput
+}
+
+export type ArticleUncheckedCreateWithoutRepresentedStoriesInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seededStories?: Prisma.StoryUncheckedCreateNestedManyWithoutSeedArticleInput
+  storyMembership?: Prisma.StoryMembershipUncheckedCreateNestedOneWithoutArticleInput
+}
+
+export type ArticleCreateOrConnectWithoutRepresentedStoriesInput = {
+  where: Prisma.ArticleWhereUniqueInput
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedCreateWithoutRepresentedStoriesInput>
+}
+
+export type ArticleUpsertWithoutSeededStoriesInput = {
+  update: Prisma.XOR<Prisma.ArticleUpdateWithoutSeededStoriesInput, Prisma.ArticleUncheckedUpdateWithoutSeededStoriesInput>
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutSeededStoriesInput, Prisma.ArticleUncheckedCreateWithoutSeededStoriesInput>
+  where?: Prisma.ArticleWhereInput
+}
+
+export type ArticleUpdateToOneWithWhereWithoutSeededStoriesInput = {
+  where?: Prisma.ArticleWhereInput
+  data: Prisma.XOR<Prisma.ArticleUpdateWithoutSeededStoriesInput, Prisma.ArticleUncheckedUpdateWithoutSeededStoriesInput>
+}
+
+export type ArticleUpdateWithoutSeededStoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  representedStories?: Prisma.StoryUpdateManyWithoutRepresentativeArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUpdateOneWithoutArticleNestedInput
+}
+
+export type ArticleUncheckedUpdateWithoutSeededStoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  representedStories?: Prisma.StoryUncheckedUpdateManyWithoutRepresentativeArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUncheckedUpdateOneWithoutArticleNestedInput
+}
+
+export type ArticleUpsertWithoutRepresentedStoriesInput = {
+  update: Prisma.XOR<Prisma.ArticleUpdateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedUpdateWithoutRepresentedStoriesInput>
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedCreateWithoutRepresentedStoriesInput>
+  where?: Prisma.ArticleWhereInput
+}
+
+export type ArticleUpdateToOneWithWhereWithoutRepresentedStoriesInput = {
+  where?: Prisma.ArticleWhereInput
+  data: Prisma.XOR<Prisma.ArticleUpdateWithoutRepresentedStoriesInput, Prisma.ArticleUncheckedUpdateWithoutRepresentedStoriesInput>
+}
+
+export type ArticleUpdateWithoutRepresentedStoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUpdateManyWithoutSeedArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUpdateOneWithoutArticleNestedInput
+}
+
+export type ArticleUncheckedUpdateWithoutRepresentedStoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUncheckedUpdateManyWithoutSeedArticleNestedInput
+  storyMembership?: Prisma.StoryMembershipUncheckedUpdateOneWithoutArticleNestedInput
+}
+
+export type ArticleCreateWithoutStoryMembershipInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seededStories?: Prisma.StoryCreateNestedManyWithoutSeedArticleInput
+  representedStories?: Prisma.StoryCreateNestedManyWithoutRepresentativeArticleInput
+}
+
+export type ArticleUncheckedCreateWithoutStoryMembershipInput = {
+  id?: string
+  title: string
+  url: string
+  canonicalUrl: string
+  sourceId: string
+  sourceName: string
+  sourceType: string
+  publisherId?: string | null
+  publisherName?: string | null
+  externalId?: string | null
+  publishedAt?: Date | string | null
+  firstDiscoveredAt: Date | string
+  lastSeenAt: Date | string
+  author?: string | null
+  summary?: string | null
+  category?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seededStories?: Prisma.StoryUncheckedCreateNestedManyWithoutSeedArticleInput
+  representedStories?: Prisma.StoryUncheckedCreateNestedManyWithoutRepresentativeArticleInput
+}
+
+export type ArticleCreateOrConnectWithoutStoryMembershipInput = {
+  where: Prisma.ArticleWhereUniqueInput
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutStoryMembershipInput, Prisma.ArticleUncheckedCreateWithoutStoryMembershipInput>
+}
+
+export type ArticleUpsertWithoutStoryMembershipInput = {
+  update: Prisma.XOR<Prisma.ArticleUpdateWithoutStoryMembershipInput, Prisma.ArticleUncheckedUpdateWithoutStoryMembershipInput>
+  create: Prisma.XOR<Prisma.ArticleCreateWithoutStoryMembershipInput, Prisma.ArticleUncheckedCreateWithoutStoryMembershipInput>
+  where?: Prisma.ArticleWhereInput
+}
+
+export type ArticleUpdateToOneWithWhereWithoutStoryMembershipInput = {
+  where?: Prisma.ArticleWhereInput
+  data: Prisma.XOR<Prisma.ArticleUpdateWithoutStoryMembershipInput, Prisma.ArticleUncheckedUpdateWithoutStoryMembershipInput>
+}
+
+export type ArticleUpdateWithoutStoryMembershipInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUpdateManyWithoutSeedArticleNestedInput
+  representedStories?: Prisma.StoryUpdateManyWithoutRepresentativeArticleNestedInput
+}
+
+export type ArticleUncheckedUpdateWithoutStoryMembershipInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceId?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  publisherId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publisherName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstDiscoveredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seededStories?: Prisma.StoryUncheckedUpdateManyWithoutSeedArticleNestedInput
+  representedStories?: Prisma.StoryUncheckedUpdateManyWithoutRepresentativeArticleNestedInput
+}
+
+
+/**
+ * Count Type ArticleCountOutputType
+ */
+
+export type ArticleCountOutputType = {
+  seededStories: number
+  representedStories: number
+}
+
+export type ArticleCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  seededStories?: boolean | ArticleCountOutputTypeCountSeededStoriesArgs
+  representedStories?: boolean | ArticleCountOutputTypeCountRepresentedStoriesArgs
+}
+
+/**
+ * ArticleCountOutputType without action
+ */
+export type ArticleCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ArticleCountOutputType
+   */
+  select?: Prisma.ArticleCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ArticleCountOutputType without action
+ */
+export type ArticleCountOutputTypeCountSeededStoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StoryWhereInput
+}
+
+/**
+ * ArticleCountOutputType without action
+ */
+export type ArticleCountOutputTypeCountRepresentedStoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.StoryWhereInput
+}
 
 
 export type ArticleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -637,6 +1079,10 @@ export type ArticleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   metadata?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  seededStories?: boolean | Prisma.Article$seededStoriesArgs<ExtArgs>
+  representedStories?: boolean | Prisma.Article$representedStoriesArgs<ExtArgs>
+  storyMembership?: boolean | Prisma.Article$storyMembershipArgs<ExtArgs>
+  _count?: boolean | Prisma.ArticleCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["article"]>
 
 export type ArticleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -706,10 +1152,22 @@ export type ArticleSelectScalar = {
 }
 
 export type ArticleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "url" | "canonicalUrl" | "sourceId" | "sourceName" | "sourceType" | "publisherId" | "publisherName" | "externalId" | "publishedAt" | "firstDiscoveredAt" | "lastSeenAt" | "author" | "summary" | "category" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["article"]>
+export type ArticleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  seededStories?: boolean | Prisma.Article$seededStoriesArgs<ExtArgs>
+  representedStories?: boolean | Prisma.Article$representedStoriesArgs<ExtArgs>
+  storyMembership?: boolean | Prisma.Article$storyMembershipArgs<ExtArgs>
+  _count?: boolean | Prisma.ArticleCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type ArticleIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type ArticleIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $ArticlePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Article"
-  objects: {}
+  objects: {
+    seededStories: Prisma.$StoryPayload<ExtArgs>[]
+    representedStories: Prisma.$StoryPayload<ExtArgs>[]
+    storyMembership: Prisma.$StoryMembershipPayload<ExtArgs> | null
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     title: string
@@ -1124,6 +1582,9 @@ readonly fields: ArticleFieldRefs;
  */
 export interface Prisma__ArticleClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  seededStories<T extends Prisma.Article$seededStoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Article$seededStoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  representedStories<T extends Prisma.Article$representedStoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Article$representedStoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  storyMembership<T extends Prisma.Article$storyMembershipArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Article$storyMembershipArgs<ExtArgs>>): Prisma.Prisma__StoryMembershipClient<runtime.Types.Result.GetResult<Prisma.$StoryMembershipPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1189,6 +1650,10 @@ export type ArticleFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Inter
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * Filter, which Article to fetch.
    */
   where: Prisma.ArticleWhereUniqueInput
@@ -1207,6 +1672,10 @@ export type ArticleFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extension
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * Filter, which Article to fetch.
    */
   where: Prisma.ArticleWhereUniqueInput
@@ -1224,6 +1693,10 @@ export type ArticleFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the Article
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
   /**
    * Filter, which Article to fetch.
    */
@@ -1273,6 +1746,10 @@ export type ArticleFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * Filter, which Article to fetch.
    */
   where?: Prisma.ArticleWhereInput
@@ -1320,6 +1797,10 @@ export type ArticleFindManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Omit specific fields from the Article
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
   /**
    * Filter, which Articles to fetch.
    */
@@ -1369,6 +1850,10 @@ export type ArticleCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * The data needed to create a Article.
    */
   data: Prisma.XOR<Prisma.ArticleCreateInput, Prisma.ArticleUncheckedCreateInput>
@@ -1416,6 +1901,10 @@ export type ArticleUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the Article
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
   /**
    * The data needed to update a Article.
    */
@@ -1483,6 +1972,10 @@ export type ArticleUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * The filter to search for the Article to update in case it exists.
    */
   where: Prisma.ArticleWhereUniqueInput
@@ -1509,6 +2002,10 @@ export type ArticleDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
+  /**
    * Filter which Article to delete.
    */
   where: Prisma.ArticleWhereUniqueInput
@@ -1529,6 +2026,73 @@ export type ArticleDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
 }
 
 /**
+ * Article.seededStories
+ */
+export type Article$seededStoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Story
+   */
+  select?: Prisma.StorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Story
+   */
+  omit?: Prisma.StoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StoryInclude<ExtArgs> | null
+  where?: Prisma.StoryWhereInput
+  orderBy?: Prisma.StoryOrderByWithRelationInput | Prisma.StoryOrderByWithRelationInput[]
+  cursor?: Prisma.StoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StoryScalarFieldEnum | Prisma.StoryScalarFieldEnum[]
+}
+
+/**
+ * Article.representedStories
+ */
+export type Article$representedStoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Story
+   */
+  select?: Prisma.StorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Story
+   */
+  omit?: Prisma.StoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StoryInclude<ExtArgs> | null
+  where?: Prisma.StoryWhereInput
+  orderBy?: Prisma.StoryOrderByWithRelationInput | Prisma.StoryOrderByWithRelationInput[]
+  cursor?: Prisma.StoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.StoryScalarFieldEnum | Prisma.StoryScalarFieldEnum[]
+}
+
+/**
+ * Article.storyMembership
+ */
+export type Article$storyMembershipArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the StoryMembership
+   */
+  select?: Prisma.StoryMembershipSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the StoryMembership
+   */
+  omit?: Prisma.StoryMembershipOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.StoryMembershipInclude<ExtArgs> | null
+  where?: Prisma.StoryMembershipWhereInput
+}
+
+/**
  * Article without action
  */
 export type ArticleDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1540,4 +2104,8 @@ export type ArticleDefaultArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the Article
    */
   omit?: Prisma.ArticleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArticleInclude<ExtArgs> | null
 }

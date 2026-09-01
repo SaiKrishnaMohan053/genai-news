@@ -398,7 +398,9 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   SystemRecord: 'SystemRecord',
-  Article: 'Article'
+  Article: 'Article',
+  Story: 'Story',
+  StoryMembership: 'StoryMembership'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -414,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "systemRecord" | "article"
+    modelProps: "systemRecord" | "article" | "story" | "storyMembership"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -566,6 +568,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Story: {
+      payload: Prisma.$StoryPayload<ExtArgs>
+      fields: Prisma.StoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        findFirst: {
+          args: Prisma.StoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        findMany: {
+          args: Prisma.StoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>[]
+        }
+        create: {
+          args: Prisma.StoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        createMany: {
+          args: Prisma.StoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>[]
+        }
+        delete: {
+          args: Prisma.StoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        update: {
+          args: Prisma.StoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.StoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.StoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryPayload>
+        }
+        aggregate: {
+          args: Prisma.StoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStory>
+        }
+        groupBy: {
+          args: Prisma.StoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoryCountAggregateOutputType> | number
+        }
+      }
+    }
+    StoryMembership: {
+      payload: Prisma.$StoryMembershipPayload<ExtArgs>
+      fields: Prisma.StoryMembershipFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StoryMembershipFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StoryMembershipFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        findFirst: {
+          args: Prisma.StoryMembershipFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StoryMembershipFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        findMany: {
+          args: Prisma.StoryMembershipFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>[]
+        }
+        create: {
+          args: Prisma.StoryMembershipCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        createMany: {
+          args: Prisma.StoryMembershipCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StoryMembershipCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>[]
+        }
+        delete: {
+          args: Prisma.StoryMembershipDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        update: {
+          args: Prisma.StoryMembershipUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        deleteMany: {
+          args: Prisma.StoryMembershipDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StoryMembershipUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StoryMembershipUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>[]
+        }
+        upsert: {
+          args: Prisma.StoryMembershipUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoryMembershipPayload>
+        }
+        aggregate: {
+          args: Prisma.StoryMembershipAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStoryMembership>
+        }
+        groupBy: {
+          args: Prisma.StoryMembershipGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoryMembershipGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StoryMembershipCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoryMembershipCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -639,6 +789,37 @@ export const ArticleScalarFieldEnum = {
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const StoryScalarFieldEnum = {
+  id: 'id',
+  canonicalTitle: 'canonicalTitle',
+  seedArticleId: 'seedArticleId',
+  representativeArticleId: 'representativeArticleId',
+  clusteringVersion: 'clusteringVersion',
+  firstPublishedAt: 'firstPublishedAt',
+  lastPublishedAt: 'lastPublishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StoryScalarFieldEnum = (typeof StoryScalarFieldEnum)[keyof typeof StoryScalarFieldEnum]
+
+
+export const StoryMembershipScalarFieldEnum = {
+  id: 'id',
+  storyId: 'storyId',
+  articleId: 'articleId',
+  kind: 'kind',
+  score: 'score',
+  signals: 'signals',
+  reason: 'reason',
+  matchedAgainstArticleId: 'matchedAgainstArticleId',
+  clusteringVersion: 'clusteringVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type StoryMembershipScalarFieldEnum = (typeof StoryMembershipScalarFieldEnum)[keyof typeof StoryMembershipScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -727,6 +908,34 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'StoryMembershipKind'
+ */
+export type EnumStoryMembershipKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StoryMembershipKind'>
+    
+
+
+/**
+ * Reference to a field of type 'StoryMembershipKind[]'
+ */
+export type ListEnumStoryMembershipKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StoryMembershipKind[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 
@@ -896,6 +1105,8 @@ export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaC
 export type GlobalOmitConfig = {
   systemRecord?: Prisma.SystemRecordOmit
   article?: Prisma.ArticleOmit
+  story?: Prisma.StoryOmit
+  storyMembership?: Prisma.StoryMembershipOmit
 }
 
 /* Types for Logging */

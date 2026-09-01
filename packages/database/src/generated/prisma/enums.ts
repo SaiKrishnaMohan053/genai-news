@@ -9,7 +9,9 @@
 * 🟢 You can import this file directly.
 */
 
+export const StoryMembershipKind = {
+  SEED: 'SEED',
+  MATCHED: 'MATCHED'
+} as const
 
-
-// This file is empty because there are no enums in the schema.
-export {}
+export type StoryMembershipKind = (typeof StoryMembershipKind)[keyof typeof StoryMembershipKind]

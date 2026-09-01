@@ -51,3 +51,13 @@ export type SystemRecord = Prisma.SystemRecordModel
  * 
  */
 export type Article = Prisma.ArticleModel
+/**
+ * Model Story
+ * 
+ */
+export type Story = Prisma.StoryModel
+/**
+ * Model StoryMembership
+ * 
+ */
+export type StoryMembership = Prisma.StoryMembershipModel
