@@ -1,12 +1,6 @@
-import {
-  createStoryRepository,
-  type DatabaseClient,
-} from '@genai-news/database';
+import { createStoryRepository, type DatabaseClient } from '@genai-news/database';
 
-import type {
-  StoryArticleId,
-  StoryId,
-} from '@genai-news/shared';
+import type { StoryArticleId, StoryId } from '@genai-news/shared';
 
 import type {
   StoryClusteringArticleReader,
@@ -19,32 +13,28 @@ export function createStoryClusteringArticleReader(
 ): StoryClusteringArticleReader {
   return {
     async findById(articleId) {
-      const article =
-        await database.article.findUnique({
-          where: {
-            id: articleId,
-          },
+      const article = await database.article.findUnique({
+        where: {
+          id: articleId,
+        },
 
-          select: {
-            id: true,
-            title: true,
-            publishedAt: true,
-          },
-        });
+        select: {
+          id: true,
+          title: true,
+          publishedAt: true,
+        },
+      });
 
       if (article === null) {
         return null;
       }
 
       return {
-        id:
-          article.id as StoryArticleId,
+        id: article.id as StoryArticleId,
 
-        title:
-          article.title,
+        title: article.title,
 
-        publishedAt:
-          article.publishedAt,
+        publishedAt: article.publishedAt,
       };
     },
   };
@@ -53,27 +43,20 @@ export function createStoryClusteringArticleReader(
 export function createStoryClusteringMembershipReader(
   database: DatabaseClient,
 ): StoryClusteringMembershipReader {
-  const repository =
-    createStoryRepository(database);
+  const repository = createStoryRepository(database);
 
   return {
     async findByArticleId(articleId) {
-      const membership =
-        await repository
-          .findMembershipByArticleId(
-            articleId,
-          );
+      const membership = await repository.findMembershipByArticleId(articleId);
 
       if (membership === null) {
         return null;
       }
 
       return {
-        storyId:
-          membership.storyId as StoryId,
+        storyId: membership.storyId as StoryId,
 
-        articleId:
-          membership.articleId as StoryArticleId,
+        articleId: membership.articleId as StoryArticleId,
       };
     },
   };
@@ -82,65 +65,46 @@ export function createStoryClusteringMembershipReader(
 export function createStoryClusteringPersistence(
   database: DatabaseClient,
 ): StoryClusteringPersistence {
-  const repository =
-    createStoryRepository(database);
+  const repository = createStoryRepository(database);
 
   return {
     async createSeedStory(input) {
-      const result =
-        await repository.createSeedStory({
-          storyId:
-            input.storyId,
+      const result = await repository.createSeedStory({
+        storyId: input.storyId,
 
-          seedArticleId:
-            input.seedArticleId,
+        seedArticleId: input.seedArticleId,
 
-          canonicalTitle:
-            input.canonicalTitle,
+        canonicalTitle: input.canonicalTitle,
 
-          clusteringVersion:
-            input.clusteringVersion,
-        });
+        clusteringVersion: input.clusteringVersion,
+      });
 
       return {
         story: {
-          id:
-            result.story.id,
+          id: result.story.id,
         },
 
-        created:
-          result.created,
+        created: result.created,
       };
     },
 
-    async addMatchedMembership(
-      input,
-    ) {
-      const result =
-        await repository
-          .addMatchedMembership({
-            storyId:
-              input.storyId,
+    async addMatchedMembership(input) {
+      const result = await repository.addMatchedMembership({
+        storyId: input.storyId,
 
-            articleId:
-              input.articleId,
+        articleId: input.articleId,
 
-            representativeArticleId:
-              input
-                .representativeArticleId,
+        representativeArticleId: input.representativeArticleId,
 
-            matchDecision:
-              input.matchDecision,
-          });
+        matchDecision: input.matchDecision,
+      });
 
       return {
         story: {
-          id:
-            result.story.id,
+          id: result.story.id,
         },
 
-        created:
-          result.created,
+        created: result.created,
       };
     },
   };

@@ -1,17 +1,10 @@
-import {
-  randomUUID,
-} from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
-import type {
-  StoryId,
-} from '@genai-news/shared';
+import type { StoryId } from '@genai-news/shared';
 
-import type {
-  StoryIdFactory,
-} from './story-clustering-service.js';
+import type { StoryIdFactory } from './story-clustering-service.js';
 
-export function createUuidStoryIdFactory():
-  StoryIdFactory {
+export function createUuidStoryIdFactory(): StoryIdFactory {
   return {
     createStoryId() {
       return randomUUID() as StoryId;
