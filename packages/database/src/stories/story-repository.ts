@@ -78,6 +78,72 @@ export type MatchedStoryMembershipPersistenceResult = {
   created: boolean;
 };
 
+export type StoryListItem = {
+  id: string;
+
+  canonicalTitle: string;
+
+  seedArticleId: string;
+  representativeArticleId: string;
+
+  clusteringVersion: string;
+
+  firstPublishedAt: Date | null;
+  lastPublishedAt: Date | null;
+
+  membershipCount: number;
+
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type StoryDetailMembership = {
+  id: string;
+
+  kind: 'SEED' | 'MATCHED';
+
+  score: number | null;
+
+  signals: unknown;
+
+  reason: string | null;
+
+  matchedAgainstArticleId: string | null;
+
+  clusteringVersion: string;
+
+  createdAt: Date;
+
+  article: {
+    id: string;
+
+    title: string;
+
+    url: string;
+    canonicalUrl: string;
+
+    sourceId: string;
+    sourceName: string;
+    sourceType: string;
+
+    publisherId: string | null;
+    publisherName: string | null;
+
+    publishedAt: Date | null;
+
+    firstDiscoveredAt: Date;
+    lastSeenAt: Date;
+  };
+};
+
+export type StoryDetail = PersistedStory & {
+  memberships: StoryDetailMembership[];
+};
+
+export type ListRecentStoriesInput = {
+  limit: number;
+};
+
 export type StoryRepository = {
   createSeedStory(input: CreateSeedStoryInput): Promise<SeedStoryPersistenceResult>;
 
@@ -88,6 +154,10 @@ export type StoryRepository = {
   findById(storyId: StoryId): Promise<PersistedStory | null>;
 
   findMembershipByArticleId(articleId: StoryArticleId): Promise<PersistedStoryMembership | null>;
+
+  listRecent(input: ListRecentStoriesInput): Promise<StoryListItem[]>;
+
+  findDetailById(storyId: string): Promise<StoryDetail | null>;
 };
 
 export class StoryPersistenceConflictError extends Error {
@@ -374,6 +444,160 @@ export function createStoryRepository(database: DatabaseClient): StoryRepository
       });
 
       return membership === null ? null : mapMembership(membership);
+    },
+
+    async listRecent(input): Promise<StoryListItem[]> {
+      if (!Number.isInteger(input.limit) || input.limit <= 0 || input.limit > 100) {
+        throw new Error('Story list limit must be an integer between 1 and 100.');
+      }
+
+      const stories = await database.story.findMany({
+        take: input.limit,
+
+        orderBy: [
+          {
+            lastPublishedAt: {
+              sort: 'desc',
+              nulls: 'last',
+            },
+          },
+          {
+            createdAt: 'desc',
+          },
+          {
+            id: 'asc',
+          },
+        ],
+
+        include: {
+          _count: {
+            select: {
+              memberships: true,
+            },
+          },
+        },
+      });
+
+      return stories.map((story) => ({
+        id: story.id,
+
+        canonicalTitle: story.canonicalTitle,
+
+        seedArticleId: story.seedArticleId,
+
+        representativeArticleId: story.representativeArticleId,
+
+        clusteringVersion: story.clusteringVersion,
+
+        firstPublishedAt: story.firstPublishedAt,
+
+        lastPublishedAt: story.lastPublishedAt,
+
+        membershipCount: story._count.memberships,
+
+        createdAt: story.createdAt,
+
+        updatedAt: story.updatedAt,
+      }));
+    },
+
+    async findDetailById(storyId): Promise<StoryDetail | null> {
+      const story = await database.story.findUnique({
+        where: {
+          id: storyId,
+        },
+
+        include: {
+          memberships: {
+            orderBy: [
+              {
+                createdAt: 'asc',
+              },
+              {
+                articleId: 'asc',
+              },
+            ],
+
+            include: {
+              article: true,
+            },
+          },
+        },
+      });
+
+      if (story === null) {
+        return null;
+      }
+
+      return {
+        id: story.id,
+
+        canonicalTitle: story.canonicalTitle,
+
+        seedArticleId: story.seedArticleId,
+
+        representativeArticleId: story.representativeArticleId,
+
+        clusteringVersion: story.clusteringVersion,
+
+        firstPublishedAt: story.firstPublishedAt,
+
+        lastPublishedAt: story.lastPublishedAt,
+
+        createdAt: story.createdAt,
+
+        updatedAt: story.updatedAt,
+
+        memberships: story.memberships.map((membership) => {
+          if (membership.kind !== 'SEED' && membership.kind !== 'MATCHED') {
+            throw new Error(`Unexpected story membership kind: ${membership.kind}`);
+          }
+
+          return {
+            id: membership.id,
+
+            kind: membership.kind,
+
+            score: membership.score,
+
+            signals: membership.signals,
+
+            reason: membership.reason,
+
+            matchedAgainstArticleId: membership.matchedAgainstArticleId,
+
+            clusteringVersion: membership.clusteringVersion,
+
+            createdAt: membership.createdAt,
+
+            article: {
+              id: membership.article.id,
+
+              title: membership.article.title,
+
+              url: membership.article.url,
+
+              canonicalUrl: membership.article.canonicalUrl,
+
+              sourceId: membership.article.sourceId,
+
+              sourceName: membership.article.sourceName,
+
+              sourceType: membership.article.sourceType,
+
+              publisherId: membership.article.publisherId,
+
+              publisherName: membership.article.publisherName,
+
+              publishedAt: membership.article.publishedAt,
+
+              firstDiscoveredAt: membership.article.firstDiscoveredAt,
+
+              lastSeenAt: membership.article.lastSeenAt,
+            },
+          };
+        }),
+      };
     },
   };
 }

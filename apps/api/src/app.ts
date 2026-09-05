@@ -9,6 +9,7 @@ import { healthRoutes } from './routes/health.js';
 import { metricsRoutes } from './routes/metrics.js';
 import { newsArticleRoutes } from './routes/news-articles.js';
 import { newsDiscoveryRoutes } from './routes/news-discovery.js';
+import { newsStoryRoutes } from './routes/news-stories.js';
 
 export interface BuildAppOptions {
   logger?: FastifyBaseLogger | false;
@@ -51,6 +52,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   }
 
   app.register(newsArticleRoutes, {
+    ...(options.database
+      ? {
+          database: options.database,
+        }
+      : {}),
+  });
+
+  app.register(newsStoryRoutes, {
     ...(options.database
       ? {
           database: options.database,

@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 
 const databaseUrl = process.env.DATABASE_URL;
+const articleTestUrlPrefix = 'https://article-api.example.com/';
 
 if (!databaseUrl) {
   throw new Error('DATABASE_URL is required for API integration tests');
@@ -22,11 +23,11 @@ describe('news article API integration', () => {
   });
 
   beforeEach(async () => {
-    await database.article.deleteMany();
+    await cleanupArticleTestData(database);
   });
 
   afterAll(async () => {
-    await database.article.deleteMany();
+    await cleanupArticleTestData(database);
     await database.$disconnect();
   });
 
@@ -36,8 +37,8 @@ describe('news article API integration', () => {
     await repository.persist(
       createArticle({
         title: 'Older article',
-        canonicalUrl: 'https://example.com/older',
-        url: 'https://example.com/older',
+        canonicalUrl: `${articleTestUrlPrefix}older`,
+        url: `${articleTestUrlPrefix}older`,
         externalId: 'older',
         publishedAt: new Date('2026-08-27T12:00:00.000Z'),
       }),
@@ -46,8 +47,8 @@ describe('news article API integration', () => {
     await repository.persist(
       createArticle({
         title: 'Newer article',
-        canonicalUrl: 'https://example.com/newer',
-        url: 'https://example.com/newer',
+        canonicalUrl: `${articleTestUrlPrefix}newer`,
+        url: `${articleTestUrlPrefix}newer`,
         externalId: 'newer',
         publishedAt: new Date('2026-08-27T14:00:00.000Z'),
       }),
@@ -61,7 +62,7 @@ describe('news article API integration', () => {
     try {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/news/articles?limit=10',
+        url: '/api/news/articles?limit=100',
       });
 
       expect(response.statusCode).toBe(200);
@@ -73,10 +74,12 @@ describe('news article API integration', () => {
         }>;
       }>();
 
-      expect(body.articles.map((article) => article.title)).toEqual([
-        'Newer article',
-        'Older article',
-      ]);
+      const titles = body.articles.map((article) => article.title);
+
+      expect(titles).toContain('Newer article');
+      expect(titles).toContain('Older article');
+
+      expect(titles.indexOf('Newer article')).toBeLessThan(titles.indexOf('Older article'));
     } finally {
       await app.close();
     }
@@ -112,8 +115,8 @@ function createArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedAr
   return {
     title: 'Example article',
 
-    url: 'https://example.com/article',
-    canonicalUrl: 'https://example.com/article',
+    url: `${articleTestUrlPrefix}article`,
+    canonicalUrl: `${articleTestUrlPrefix}article`,
 
     source: {
       id: 'gnews',
@@ -138,4 +141,14 @@ function createArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedAr
 
     ...overrides,
   };
+}
+
+async function cleanupArticleTestData(database: DatabaseClient): Promise<void> {
+  await database.article.deleteMany({
+    where: {
+      canonicalUrl: {
+        startsWith: articleTestUrlPrefix,
+      },
+    },
+  });
 }
