@@ -163,6 +163,7 @@ services:
 
     environment:
       NODE_ENV: production
+      API_BASE_URL: http://api:3001
 
     ports:
       - '${WEB_PORT}:3000'
