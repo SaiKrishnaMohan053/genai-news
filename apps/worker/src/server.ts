@@ -2,18 +2,28 @@ import {
   createLogger,
   createMetricsRegistry,
   createNewsDiscoveryMetrics,
+  createStoryClusteringMetrics,
   emitStructuredEvent,
 } from '@genai-news/observability';
+
 import { createRedisClient, createWorkerRedisClient } from '@genai-news/queue';
+
 import { createArticleRepository, createPrismaClient } from '@genai-news/database';
+
 import { createOpenAiSemanticEmbeddingClient } from '@genai-news/tools';
-import { createProductionStoryClusteringService } from './news/story-clustering/index.js';
 
 import { loadWorkerEnv } from './config/env.js';
+
 import { createWorkerHealthServer } from './health/server.js';
+
 import { tracing } from './instrumentation.js';
+
 import { createNewsSourceRegistry } from './news/source-registry.js';
+
+import { createProductionStoryClusteringService } from './news/story-clustering/index.js';
+
 import { createNewsDiscoveryWorker } from './news-worker.js';
+
 import { createSystemWorker } from './worker.js';
 
 const env = loadWorkerEnv();
@@ -21,22 +31,11 @@ const env = loadWorkerEnv();
 const database = createPrismaClient(env.DATABASE_URL);
 
 const articleRepository = createArticleRepository(database);
+
 const semanticEmbeddingClient = createOpenAiSemanticEmbeddingClient({
   apiKey: env.OPENAI_API_KEY,
 
   model: env.STORY_EMBEDDING_MODEL,
-});
-
-const storyClusteringService = createProductionStoryClusteringService({
-  database,
-
-  embeddingClient: semanticEmbeddingClient,
-
-  candidatePolicy: {
-    maxTimeDistanceMs: env.STORY_CANDIDATE_WINDOW_HOURS * 60 * 60 * 1000,
-
-    includeWhenTimeUnknown: env.STORY_INCLUDE_UNKNOWN_TIME,
-  },
 });
 
 const sourceRegistry = createNewsSourceRegistry({
@@ -53,16 +52,37 @@ const freshnessPolicy = {
 
 const logger = createLogger({
   service: 'worker',
+
   environment: env.NODE_ENV,
+
   level: env.LOG_LEVEL,
 });
 
 const metricsRegistry = createMetricsRegistry({
   service: 'worker',
+
   environment: env.NODE_ENV,
 });
 
 const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
+
+const storyClusteringMetrics = createStoryClusteringMetrics(metricsRegistry);
+
+const storyClusteringService = createProductionStoryClusteringService({
+  database,
+
+  embeddingClient: semanticEmbeddingClient,
+
+  candidatePolicy: {
+    maxTimeDistanceMs: env.STORY_CANDIDATE_WINDOW_HOURS * 60 * 60 * 1000,
+
+    includeWhenTimeUnknown: env.STORY_INCLUDE_UNKNOWN_TIME,
+  },
+
+  metrics: storyClusteringMetrics,
+
+  logger,
+});
 
 const workerRedis = createWorkerRedisClient(env.REDIS_URL);
 
@@ -74,27 +94,43 @@ const worker = createSystemWorker(workerRedis);
 
 const discoveryWorker = createNewsDiscoveryWorker({
   connection: discoveryWorkerRedis,
+
   sourceRegistry,
+
   articleRepository,
+
   storyClusterer: storyClusteringService,
+
   freshnessPolicy,
+
   metrics: newsDiscoveryMetrics,
+
+  logger,
 });
 
 const healthServer = createWorkerHealthServer({
   redis: healthRedis,
+
   metrics: metricsRegistry,
 });
 
-healthServer.listen(env.WORKER_HEALTH_PORT, env.WORKER_HEALTH_HOST, () => {
-  logger.info(
-    {
-      host: env.WORKER_HEALTH_HOST,
-      port: env.WORKER_HEALTH_PORT,
-    },
-    'worker health server started',
-  );
-});
+healthServer.listen(
+  env.WORKER_HEALTH_PORT,
+
+  env.WORKER_HEALTH_HOST,
+
+  () => {
+    logger.info(
+      {
+        host: env.WORKER_HEALTH_HOST,
+
+        port: env.WORKER_HEALTH_PORT,
+      },
+
+      'worker health server started',
+    );
+  },
+);
 
 worker.on('ready', () => {
   logger.info('worker ready');
@@ -104,8 +140,10 @@ worker.on('completed', (job) => {
   logger.info(
     {
       jobId: job.id,
+
       jobName: job.name,
     },
+
     'job completed',
   );
 });
@@ -114,9 +152,12 @@ worker.on('failed', (job, error) => {
   logger.error(
     {
       err: error,
+
       jobId: job?.id,
+
       jobName: job?.name,
     },
+
     'job failed',
   );
 });
@@ -126,6 +167,7 @@ worker.on('error', (error) => {
     {
       err: error,
     },
+
     'worker error',
   );
 });
@@ -134,75 +176,93 @@ discoveryWorker.on('ready', () => {
   logger.info('news discovery worker ready');
 });
 
-discoveryWorker.on('completed', (job, result) => {
-  emitStructuredEvent({
-    logger,
+discoveryWorker.on(
+  'completed',
 
-    event: 'news.discovery.completed',
+  (job, result) => {
+    emitStructuredEvent({
+      logger,
 
-    attributes: {
-      jobId: job.id,
-      jobName: job.name,
-      sourceId: result.sourceId,
+      event: 'news.discovery.completed',
 
-      fetchedCount: result.fetchedCount,
+      attributes: {
+        jobId: job.id,
 
-      normalizedCount: result.normalizedCount,
+        jobName: job.name,
 
-      normalizationRejectedCount: result.normalizationRejectedCount,
+        sourceId: result.sourceId,
 
-      clusteredCount: result.clusteredCount,
+        fetchedCount: result.fetchedCount,
 
-      alreadyAssignedCount: result.alreadyAssignedCount,
+        normalizedCount: result.normalizedCount,
 
-      assignedExistingStoryCount: result.assignedExistingStoryCount,
+        normalizationRejectedCount: result.normalizationRejectedCount,
 
-      seededNewStoryCount: result.seededNewStoryCount,
+        freshCount: result.freshCount,
 
-      freshCount: result.freshCount,
+        freshnessRejectedCount: result.freshnessRejectedCount,
 
-      freshnessRejectedCount: result.freshnessRejectedCount,
+        uniqueCount: result.uniqueCount,
 
-      uniqueCount: result.uniqueCount,
+        duplicateCount: result.duplicateCount,
 
-      duplicateCount: result.duplicateCount,
+        persistedCount: result.persistedCount,
 
-      persistedCount: result.persistedCount,
+        clusteredCount: result.clusteredCount,
 
-      requestedAt: result.requestedAt,
+        alreadyAssignedCount: result.alreadyAssignedCount,
 
-      completedAt: result.completedAt,
-    },
-  });
-});
+        assignedExistingStoryCount: result.assignedExistingStoryCount,
 
-discoveryWorker.on('failed', (job, error) => {
-  emitStructuredEvent({
-    logger,
+        seededNewStoryCount: result.seededNewStoryCount,
 
-    event: 'news.discovery.failed',
+        requestedAt: result.requestedAt,
 
-    level: 'error',
+        completedAt: result.completedAt,
+      },
+    });
+  },
+);
 
-    attributes: {
-      jobId: job?.id,
-      jobName: job?.name,
-      sourceId: job?.data.sourceId,
-      requestedAt: job?.data.requestedAt,
-    },
+discoveryWorker.on(
+  'failed',
 
-    error,
-  });
-});
+  (job, error) => {
+    emitStructuredEvent({
+      logger,
 
-discoveryWorker.on('error', (error) => {
-  logger.error(
-    {
-      err: error,
-    },
-    'news discovery worker error',
-  );
-});
+      event: 'news.discovery.failed',
+
+      level: 'error',
+
+      attributes: {
+        jobId: job?.id,
+
+        jobName: job?.name,
+
+        sourceId: job?.data.sourceId,
+
+        requestedAt: job?.data.requestedAt,
+      },
+
+      error,
+    });
+  },
+);
+
+discoveryWorker.on(
+  'error',
+
+  (error) => {
+    logger.error(
+      {
+        err: error,
+      },
+
+      'news discovery worker error',
+    );
+  },
+);
 
 let shuttingDown = false;
 
@@ -217,17 +277,20 @@ async function shutdown(signal: string): Promise<void> {
     {
       signal,
     },
+
     'worker shutdown started',
   );
 
   try {
     await discoveryWorker.close();
+
     await worker.close();
 
     await new Promise<void>((resolve, reject) => {
       healthServer.close((error) => {
         if (error) {
           reject(error);
+
           return;
         }
 
@@ -238,7 +301,9 @@ async function shutdown(signal: string): Promise<void> {
     await database.$disconnect();
 
     healthRedis.disconnect();
+
     workerRedis.disconnect();
+
     discoveryWorkerRedis.disconnect();
 
     if (tracing) {
@@ -253,6 +318,7 @@ async function shutdown(signal: string): Promise<void> {
       {
         err: error,
       },
+
       'worker shutdown failed',
     );
 

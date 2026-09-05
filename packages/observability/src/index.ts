@@ -22,3 +22,9 @@ export {
   type StructuredEventLevel,
   type StructuredEventLogger,
 } from './event.js';
+
+export {
+  createStoryClusteringMetrics,
+  type StoryClusteringMetrics,
+  type StoryClusteringOutcome,
+} from './story-clustering-metrics.js';

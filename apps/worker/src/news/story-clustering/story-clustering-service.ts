@@ -1,4 +1,11 @@
 import {
+  emitStructuredEvent,
+  runWithSpan,
+  type StoryClusteringMetrics,
+  type StructuredEventLogger,
+} from '@genai-news/observability';
+
+import {
   assignArticleToStoryCluster,
   createStoryIdentityV1,
   decideStoryMatchV1,
@@ -36,11 +43,13 @@ export type ExistingStoryMembership = {
 
 export type SemanticStorySimilarityCandidate = {
   articleId: StoryArticleId;
+
   title: string;
 };
 
 export type SemanticStorySimilarityResult = {
   articleId: StoryArticleId;
+
   similarity: number;
 };
 
@@ -124,6 +133,10 @@ export type StoryClusteringDependencies = {
   persistence: StoryClusteringPersistence;
 
   storyIdFactory: StoryIdFactory;
+
+  metrics?: StoryClusteringMetrics;
+
+  logger?: StructuredEventLogger;
 };
 
 export type StoryAlreadyAssignedResult = {
@@ -168,150 +181,357 @@ export function createStoryClusteringService(dependencies: StoryClusteringDepend
     async clusterArticle(articleId: StoryArticleId): Promise<StoryClusteringResult> {
       assertArticleId(articleId);
 
-      /**
-       * First idempotency boundary.
-       *
-       * If this article is already a member,
-       * clustering must not be recomputed.
-       */
-      const existingMembership = await dependencies.membershipReader.findByArticleId(articleId);
+      const clusteringStartedAt = performance.now();
 
-      if (existingMembership !== null) {
-        return {
-          kind: 'already-assigned',
+      try {
+        return await runWithSpan(
+          {
+            tracerName: 'genai-news-worker',
 
-          articleId,
+            spanName: 'story.cluster',
 
-          storyId: existingMembership.storyId,
-        };
-      }
+            attributes: {
+              'story.article.id': articleId,
+            },
+          },
 
-      const article = await dependencies.articleReader.findById(articleId);
+          async (span) => {
+            /**
+             * First idempotency boundary.
+             *
+             * If this article is already a member,
+             * clustering must not be recomputed.
+             */
+            const existingMembership =
+              await dependencies.membershipReader.findByArticleId(articleId);
 
-      if (article === null) {
-        throw new Error(`Cannot cluster missing article: ${articleId}`);
-      }
+            if (existingMembership !== null) {
+              span.setAttribute('story.assignment.outcome', 'already_assigned');
 
-      assertNormalizedTitle(article.title);
+              span.setAttribute('story.id', existingMembership.storyId);
 
-      const candidates = await dependencies.candidateProvider.findCandidates(article);
+              span.setAttribute('story.candidate.count', 0);
 
-      validateCandidates(candidates);
+              span.setAttribute('story.semantic.comparison_count', 0);
 
-      const semanticResults =
-        candidates.length === 0
-          ? []
-          : await dependencies.semanticSimilarity.compareAgainstCandidates(
-              article.title,
+              dependencies.metrics?.attemptsTotal.inc({
+                outcome: 'already_assigned',
+              });
 
-              candidates.map((candidate) => ({
-                articleId: candidate.representativeArticle.id,
+              if (dependencies.logger) {
+                emitStructuredEvent({
+                  logger: dependencies.logger,
 
-                title: candidate.representativeArticle.title,
-              })),
+                  event: 'story.clustering.already_assigned',
+
+                  attributes: {
+                    articleId,
+
+                    storyId: existingMembership.storyId,
+                  },
+                });
+              }
+
+              return {
+                kind: 'already-assigned',
+
+                articleId,
+
+                storyId: existingMembership.storyId,
+              };
+            }
+
+            const article = await dependencies.articleReader.findById(articleId);
+
+            if (article === null) {
+              throw new Error(`Cannot cluster missing article: ${articleId}`);
+            }
+
+            assertNormalizedTitle(article.title);
+
+            const candidateGenerationStartedAt = performance.now();
+
+            const candidates = await runWithSpan(
+              {
+                tracerName: 'genai-news-worker',
+
+                spanName: 'story.candidate_generation',
+
+                attributes: {
+                  'story.article.id': articleId,
+                },
+              },
+
+              async (candidateSpan) => {
+                const result = await dependencies.candidateProvider.findCandidates(article);
+
+                candidateSpan.setAttribute('story.candidate.count', result.length);
+
+                return result;
+              },
             );
 
-      const similarityByRepresentativeId = new Map<StoryArticleId, number>();
+            dependencies.metrics?.candidateGenerationDurationSeconds.observe(
+              (performance.now() - candidateGenerationStartedAt) / 1000,
+            );
 
-      for (const result of semanticResults) {
-        if (similarityByRepresentativeId.has(result.articleId)) {
-          throw new Error(`Duplicate semantic similarity result: ${result.articleId}`);
-        }
+            dependencies.metrics?.candidatesTotal.inc(candidates.length);
 
-        similarityByRepresentativeId.set(result.articleId, result.similarity);
-      }
+            span.setAttribute('story.candidate.count', candidates.length);
 
-      if (semanticResults.length !== candidates.length) {
-        throw new Error(
-          [
-            'Semantic similarity result count mismatch.',
-            `expected=${candidates.length}`,
-            `actual=${semanticResults.length}`,
-          ].join(' '),
+            validateCandidates(candidates);
+
+            let semanticResults: readonly SemanticStorySimilarityResult[] = [];
+
+            if (candidates.length > 0) {
+              const semanticComparisonStartedAt = performance.now();
+
+              semanticResults = await runWithSpan(
+                {
+                  tracerName: 'genai-news-worker',
+
+                  spanName: 'story.semantic_comparison',
+
+                  attributes: {
+                    'story.article.id': articleId,
+
+                    'story.candidate.count': candidates.length,
+                  },
+                },
+
+                async (semanticSpan) => {
+                  const results = await dependencies.semanticSimilarity.compareAgainstCandidates(
+                    article.title,
+
+                    candidates.map((candidate) => ({
+                      articleId: candidate.representativeArticle.id,
+
+                      title: candidate.representativeArticle.title,
+                    })),
+                  );
+
+                  semanticSpan.setAttribute('story.semantic.comparison_count', results.length);
+
+                  return results;
+                },
+              );
+
+              dependencies.metrics?.semanticComparisonDurationSeconds.observe(
+                (performance.now() - semanticComparisonStartedAt) / 1000,
+              );
+
+              dependencies.metrics?.semanticComparisonsTotal.inc(candidates.length);
+            }
+
+            span.setAttribute('story.semantic.comparison_count', semanticResults.length);
+
+            const similarityByRepresentativeId = new Map<StoryArticleId, number>();
+
+            for (const result of semanticResults) {
+              if (similarityByRepresentativeId.has(result.articleId)) {
+                throw new Error(`Duplicate semantic similarity result: ${result.articleId}`);
+              }
+
+              similarityByRepresentativeId.set(result.articleId, result.similarity);
+            }
+
+            if (semanticResults.length !== candidates.length) {
+              throw new Error(
+                [
+                  'Semantic similarity result count mismatch.',
+                  `expected=${candidates.length}`,
+                  `actual=${semanticResults.length}`,
+                ].join(' '),
+              );
+            }
+
+            const assignmentCandidates: StoryAssignmentCandidate[] = candidates.map((candidate) => {
+              const representativeArticleId = candidate.representativeArticle.id;
+
+              const semanticSimilarity = similarityByRepresentativeId.get(representativeArticleId);
+
+              if (semanticSimilarity === undefined) {
+                throw new Error(
+                  `Missing semantic similarity result for representative article: ${representativeArticleId}`,
+                );
+              }
+
+              return {
+                storyId: candidate.storyId,
+
+                representativeArticleId,
+
+                decision: decideStoryMatchV1(semanticSimilarity),
+              };
+            });
+
+            const assignment = assignArticleToStoryCluster(
+              articleId,
+
+              assignmentCandidates,
+            );
+
+            if (assignment.kind === 'assign-existing-story') {
+              const persisted = await dependencies.persistence.addMatchedMembership({
+                storyId: assignment.storyId,
+
+                articleId,
+
+                representativeArticleId: assignment.representativeArticleId,
+
+                matchDecision: toMatchedDecision(assignment.matchDecision),
+              });
+
+              span.setAttribute('story.assignment.outcome', 'assigned_existing_story');
+
+              span.setAttribute('story.id', assignment.storyId);
+
+              span.setAttribute(
+                'story.representative_article.id',
+                assignment.representativeArticleId,
+              );
+
+              span.setAttribute('story.semantic_similarity', assignment.matchDecision.score);
+
+              span.setAttribute('story.persistence.created', persisted.created);
+
+              dependencies.metrics?.attemptsTotal.inc({
+                outcome: 'assigned_existing_story',
+              });
+
+              if (dependencies.logger) {
+                emitStructuredEvent({
+                  logger: dependencies.logger,
+
+                  event: 'story.clustering.assigned_existing_story',
+
+                  attributes: {
+                    articleId,
+
+                    storyId: assignment.storyId,
+
+                    representativeArticleId: assignment.representativeArticleId,
+
+                    semanticSimilarity: assignment.matchDecision.score,
+
+                    candidateCount: candidates.length,
+
+                    persisted: persisted.created,
+
+                    clusteringVersion: assignment.matchDecision.clusteringVersion,
+                  },
+                });
+              }
+
+              return {
+                kind: 'assigned-existing-story',
+
+                articleId,
+
+                storyId: assignment.storyId,
+
+                representativeArticleId: assignment.representativeArticleId,
+
+                semanticSimilarity: assignment.matchDecision.score,
+
+                persisted: persisted.created,
+              };
+            }
+
+            const newStoryId = dependencies.storyIdFactory.createStoryId();
+
+            const identity = createStoryIdentityV1(
+              newStoryId,
+
+              articleId,
+
+              article.title,
+            );
+
+            const persisted = await dependencies.persistence.createSeedStory({
+              storyId: identity.storyId,
+
+              seedArticleId: identity.seedArticleId,
+
+              canonicalTitle: identity.canonicalTitle,
+
+              clusteringVersion: identity.clusteringVersion,
+            });
+
+            span.setAttribute('story.assignment.outcome', 'seeded_new_story');
+
+            span.setAttribute('story.id', identity.storyId);
+
+            span.setAttribute('story.seed.reason', assignment.reason);
+
+            span.setAttribute('story.persistence.created', persisted.created);
+
+            dependencies.metrics?.attemptsTotal.inc({
+              outcome: 'seeded_new_story',
+            });
+
+            if (dependencies.logger) {
+              emitStructuredEvent({
+                logger: dependencies.logger,
+
+                event: 'story.clustering.seeded_new_story',
+
+                attributes: {
+                  articleId,
+
+                  storyId: identity.storyId,
+
+                  reason: assignment.reason,
+
+                  candidateCount: candidates.length,
+
+                  persisted: persisted.created,
+
+                  clusteringVersion: identity.clusteringVersion,
+                },
+              });
+            }
+
+            return {
+              kind: 'seeded-new-story',
+
+              articleId,
+
+              storyId: identity.storyId,
+
+              reason: assignment.reason,
+
+              persisted: persisted.created,
+            };
+          },
         );
-      }
-
-      const assignmentCandidates: StoryAssignmentCandidate[] = candidates.map((candidate) => {
-        const representativeArticleId = candidate.representativeArticle.id;
-
-        const semanticSimilarity = similarityByRepresentativeId.get(representativeArticleId);
-
-        if (semanticSimilarity === undefined) {
-          throw new Error(
-            `Missing semantic similarity result for representative article: ${representativeArticleId}`,
-          );
-        }
-
-        return {
-          storyId: candidate.storyId,
-
-          representativeArticleId,
-
-          decision: decideStoryMatchV1(semanticSimilarity),
-        };
-      });
-
-      const assignment = assignArticleToStoryCluster(articleId, assignmentCandidates);
-
-      if (assignment.kind === 'assign-existing-story') {
-        /**
-         * 2.7 guarantees exactly one matching
-         * candidate in this branch.
-         */
-        const persisted = await dependencies.persistence.addMatchedMembership({
-          storyId: assignment.storyId,
-
-          articleId,
-
-          representativeArticleId: assignment.representativeArticleId,
-
-          matchDecision: toMatchedDecision(assignment.matchDecision),
+      } catch (error) {
+        dependencies.metrics?.attemptsTotal.inc({
+          outcome: 'failed',
         });
 
-        return {
-          kind: 'assigned-existing-story',
+        if (dependencies.logger) {
+          emitStructuredEvent({
+            logger: dependencies.logger,
 
-          articleId,
+            event: 'story.clustering.failed',
 
-          storyId: assignment.storyId,
+            level: 'error',
 
-          representativeArticleId: assignment.representativeArticleId,
+            attributes: {
+              articleId,
+            },
 
-          semanticSimilarity: assignment.matchDecision.score,
+            error,
+          });
+        }
 
-          persisted: persisted.created,
-        };
+        throw error;
+      } finally {
+        dependencies.metrics?.clusteringDurationSeconds.observe(
+          (performance.now() - clusteringStartedAt) / 1000,
+        );
       }
-
-      /**
-       * No candidate, no match, or ambiguous multiple
-       * matches all conservatively seed a new story.
-       */
-      const newStoryId = dependencies.storyIdFactory.createStoryId();
-
-      const identity = createStoryIdentityV1(newStoryId, articleId, article.title);
-
-      const persisted = await dependencies.persistence.createSeedStory({
-        storyId: identity.storyId,
-
-        seedArticleId: identity.seedArticleId,
-
-        canonicalTitle: identity.canonicalTitle,
-
-        clusteringVersion: identity.clusteringVersion,
-      });
-
-      return {
-        kind: 'seeded-new-story',
-
-        articleId,
-
-        storyId: identity.storyId,
-
-        reason: assignment.reason,
-
-        persisted: persisted.created,
-      };
     },
   };
 }

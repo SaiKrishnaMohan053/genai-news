@@ -1,3 +1,5 @@
+import { createMetricsRegistry, createStoryClusteringMetrics } from '@genai-news/observability';
+
 import {
   INITIAL_STORY_CLUSTERING_VERSION,
   type StoryArticleId,
@@ -17,6 +19,16 @@ function articleId(value: string): StoryArticleId {
 
 function storyId(value: string): StoryId {
   return value as StoryId;
+}
+
+function createTestLogger() {
+  return {
+    info: vi.fn(),
+
+    warn: vi.fn(),
+
+    error: vi.fn(),
+  };
 }
 
 function createDependencies(): StoryClusteringDependencies {
@@ -132,6 +144,106 @@ describe('incremental story clustering service', () => {
 
       clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
     });
+  });
+
+  it('records clustering metrics for an existing-story assignment', async () => {
+    const registry = createMetricsRegistry({
+      service: 'worker',
+
+      environment: 'test',
+
+      collectDefaults: false,
+    });
+
+    const metrics = createStoryClusteringMetrics(registry);
+
+    const service = createStoryClusteringService({
+      articleReader: {
+        async findById() {
+          return {
+            id: articleId('article-new'),
+
+            title: 'Example matching story',
+
+            publishedAt: new Date('2026-09-05T12:00:00.000Z'),
+          };
+        },
+      },
+
+      membershipReader: {
+        async findByArticleId() {
+          return null;
+        },
+      },
+
+      candidateProvider: {
+        async findCandidates() {
+          return [
+            {
+              storyId: storyId('story-existing'),
+
+              representativeArticle: {
+                id: articleId('article-representative'),
+
+                title: 'Example matching story',
+
+                publishedAt: new Date('2026-09-05T11:55:00.000Z'),
+              },
+            },
+          ];
+        },
+      },
+
+      semanticSimilarity: {
+        async compareAgainstCandidates() {
+          return [
+            {
+              articleId: articleId('article-representative'),
+
+              similarity: 0.95,
+            },
+          ];
+        },
+      },
+
+      persistence: {
+        async addMatchedMembership() {
+          return {
+            story: {
+              id: 'story-existing',
+            },
+
+            created: true,
+          };
+        },
+
+        async createSeedStory() {
+          throw new Error('unexpected seed');
+        },
+      },
+
+      storyIdFactory: {
+        createStoryId() {
+          return storyId('unused-story-id');
+        },
+      },
+
+      metrics,
+    });
+
+    await service.clusterArticle(articleId('article-new'));
+
+    const output = await registry.metrics();
+
+    expect(output).toContain('outcome="assigned_existing_story"');
+
+    expect(output).toContain(
+      'genai_news_story_candidates_total{service="worker",environment="test"} 1',
+    );
+
+    expect(output).toContain(
+      'genai_news_story_semantic_comparisons_total{service="worker",environment="test"} 1',
+    );
   });
 
   it('assigns to the only semantic match', async () => {
@@ -479,6 +591,178 @@ describe('incremental story clustering service', () => {
           title: 'Candidate B',
         },
       ],
+    );
+  });
+
+  it('emits an already-assigned structured event', async () => {
+    const dependencies = createDependencies();
+
+    const logger = createTestLogger();
+
+    dependencies.logger = logger;
+
+    vi.mocked(dependencies.membershipReader.findByArticleId).mockResolvedValue({
+      storyId: storyId('story-existing'),
+
+      articleId: articleId('article-a'),
+    });
+
+    const service = createStoryClusteringService(dependencies);
+
+    await service.clusterArticle(articleId('article-a'));
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'story.clustering.already_assigned',
+
+        articleId: 'article-a',
+
+        storyId: 'story-existing',
+      }),
+
+      'story.clustering.already_assigned',
+    );
+
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('emits an assigned-existing-story structured event', async () => {
+    const dependencies = createDependencies();
+
+    const logger = createTestLogger();
+
+    dependencies.logger = logger;
+
+    vi.mocked(dependencies.candidateProvider.findCandidates).mockResolvedValue([
+      {
+        storyId: storyId('story-existing'),
+
+        representativeArticle: {
+          id: articleId('article-representative'),
+
+          title: 'Company unveils AI platform',
+
+          publishedAt: new Date('2026-09-01T09:30:00.000Z'),
+        },
+      },
+    ]);
+
+    vi.mocked(dependencies.semanticSimilarity.compareAgainstCandidates).mockResolvedValue([
+      {
+        articleId: articleId('article-representative'),
+
+        similarity: 0.95,
+      },
+    ]);
+
+    const service = createStoryClusteringService(dependencies);
+
+    await service.clusterArticle(articleId('article-a'));
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'story.clustering.assigned_existing_story',
+
+        articleId: 'article-a',
+
+        storyId: 'story-existing',
+
+        representativeArticleId: 'article-representative',
+
+        semanticSimilarity: 0.95,
+
+        candidateCount: 1,
+
+        persisted: true,
+
+        clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+      }),
+
+      'story.clustering.assigned_existing_story',
+    );
+
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('emits a seeded-new-story structured event', async () => {
+    const dependencies = createDependencies();
+
+    const logger = createTestLogger();
+
+    dependencies.logger = logger;
+
+    const service = createStoryClusteringService(dependencies);
+
+    await service.clusterArticle(articleId('article-a'));
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'story.clustering.seeded_new_story',
+
+        articleId: 'article-a',
+
+        storyId: 'story-generated',
+
+        reason: 'no-candidates',
+
+        candidateCount: 0,
+
+        persisted: true,
+
+        clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+      }),
+
+      'story.clustering.seeded_new_story',
+    );
+
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('emits a failed structured event and rethrows the error', async () => {
+    const dependencies = createDependencies();
+
+    const logger = createTestLogger();
+
+    dependencies.logger = logger;
+
+    const clusteringError = new Error('semantic provider unavailable');
+
+    vi.mocked(dependencies.candidateProvider.findCandidates).mockResolvedValue([
+      {
+        storyId: storyId('story-existing'),
+
+        representativeArticle: {
+          id: articleId('article-representative'),
+
+          title: 'Company unveils AI platform',
+
+          publishedAt: null,
+        },
+      },
+    ]);
+
+    vi.mocked(dependencies.semanticSimilarity.compareAgainstCandidates).mockRejectedValue(
+      clusteringError,
+    );
+
+    const service = createStoryClusteringService(dependencies);
+
+    await expect(service.clusterArticle(articleId('article-a'))).rejects.toThrow(
+      'semantic provider unavailable',
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'story.clustering.failed',
+
+        articleId: 'article-a',
+
+        err: clusteringError,
+      }),
+
+      'story.clustering.failed',
     );
   });
 });

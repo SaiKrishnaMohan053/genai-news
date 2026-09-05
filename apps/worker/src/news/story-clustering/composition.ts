@@ -1,8 +1,10 @@
 import type { DatabaseClient } from '@genai-news/database';
 
-import type { SemanticEmbeddingClient } from '@genai-news/tools';
+import type { StoryClusteringMetrics, StructuredEventLogger } from '@genai-news/observability';
 
 import type { StoryCandidateGenerationPolicy } from '@genai-news/shared';
+
+import type { SemanticEmbeddingClient } from '@genai-news/tools';
 
 import { createDatabaseStoryCandidateProvider } from './candidate-provider.js';
 
@@ -24,6 +26,10 @@ export type CreateProductionStoryClusteringServiceInput = {
   embeddingClient: SemanticEmbeddingClient;
 
   candidatePolicy: StoryCandidateGenerationPolicy;
+
+  metrics?: StoryClusteringMetrics;
+
+  logger?: StructuredEventLogger;
 };
 
 export function createProductionStoryClusteringService(
@@ -45,5 +51,17 @@ export function createProductionStoryClusteringService(
     persistence: createStoryClusteringPersistence(input.database),
 
     storyIdFactory: createUuidStoryIdFactory(),
+
+    ...(input.metrics
+      ? {
+          metrics: input.metrics,
+        }
+      : {}),
+
+    ...(input.logger
+      ? {
+          logger: input.logger,
+        }
+      : {}),
   });
 }
