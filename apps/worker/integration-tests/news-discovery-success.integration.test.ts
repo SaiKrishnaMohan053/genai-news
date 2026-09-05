@@ -1,6 +1,6 @@
 import { createArticleRepository, createPrismaClient } from '@genai-news/database';
 
-import type { NewsSource, NewsSourceResult } from '@genai-news/shared';
+import type { NewsSource, NewsSourceResult, StoryArticleId } from '@genai-news/shared';
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -18,6 +18,15 @@ if (!databaseUrl) {
 }
 
 const database = createPrismaClient(databaseUrl);
+const storyClusterer = {
+  async clusterArticle(articleId: StoryArticleId) {
+    return {
+      kind: 'seeded-new-story' as const,
+      articleId,
+      storyId: 'story-phase1-integration',
+    };
+  },
+};
 
 function createSourceResult(): NewsSourceResult {
   return {
@@ -141,6 +150,8 @@ describe('Phase 1 successful discovery integration', () => {
 
         articleRepository: repository,
 
+        storyClusterer,
+
         freshnessPolicy: {
           maxAgeMs: 24 * 60 * 60 * 1000,
           maxFutureSkewMs: 5 * 60 * 1000,
@@ -158,6 +169,11 @@ describe('Phase 1 successful discovery integration', () => {
 
       normalizedCount: 3,
       normalizationRejectedCount: 1,
+
+      clusteredCount: 1,
+      alreadyAssignedCount: 0,
+      assignedExistingStoryCount: 0,
+      seededNewStoryCount: 1,
 
       freshCount: 2,
       freshnessRejectedCount: 1,
@@ -193,6 +209,8 @@ describe('Phase 1 successful discovery integration', () => {
       sourceRegistry: createRegistry(),
 
       articleRepository: repository,
+
+      storyClusterer,
 
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,

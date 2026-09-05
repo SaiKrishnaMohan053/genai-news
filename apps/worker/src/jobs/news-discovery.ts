@@ -7,6 +7,7 @@ import {
   normalizeSourceArticle,
   type FreshnessPolicy,
   type NormalizedArticle,
+  type StoryArticleId,
 } from '@genai-news/shared';
 
 import type { NewsSourceRegistry } from '../news/source-registry.js';
@@ -27,15 +28,34 @@ export type NewsDiscoveryResult = {
 
   persistedCount: number;
 
+  clusteredCount: number;
+  alreadyAssignedCount: number;
+  assignedExistingStoryCount: number;
+  seededNewStoryCount: number;
+
   requestedAt: string;
   completedAt: string;
 };
 
+export type NewsDiscoveryStoryClusteringResult = {
+  kind: 'already-assigned' | 'assigned-existing-story' | 'seeded-new-story';
+};
+
+export type NewsDiscoveryStoryClusterer = {
+  clusterArticle(articleId: StoryArticleId): Promise<NewsDiscoveryStoryClusteringResult>;
+};
+
 export type NewsDiscoveryDependencies = {
   sourceRegistry: NewsSourceRegistry;
+
   articleRepository: ArticleRepository;
+
+  storyClusterer: NewsDiscoveryStoryClusterer;
+
   freshnessPolicy: FreshnessPolicy;
+
   metrics?: NewsDiscoveryMetrics;
+
   now?: () => Date;
 };
 
@@ -243,10 +263,10 @@ export async function processNewsDiscovery(
 
   const persistenceStartedAt = performance.now();
 
-  const persistedCount = await runWithSpan(
+  const workflowResult = await runWithSpan(
     {
       tracerName: 'genai-news-worker',
-      spanName: 'news.persist',
+      spanName: 'news.persist-and-cluster',
 
       attributes: {
         'news.source.id': sourceId,
@@ -255,16 +275,59 @@ export async function processNewsDiscovery(
     },
 
     async (span) => {
-      let count = 0;
+      let persistedCount = 0;
+
+      let clusteredCount = 0;
+
+      let alreadyAssignedCount = 0;
+
+      let assignedExistingStoryCount = 0;
+
+      let seededNewStoryCount = 0;
 
       for (const article of deduplicated.uniqueArticles) {
-        await dependencies.articleRepository.persist(article);
-        count += 1;
+        const persisted = await dependencies.articleRepository.persist(article);
+
+        persistedCount += 1;
+
+        const clustering = await dependencies.storyClusterer.clusterArticle(
+          persisted.id as StoryArticleId,
+        );
+
+        clusteredCount += 1;
+
+        switch (clustering.kind) {
+          case 'already-assigned':
+            alreadyAssignedCount += 1;
+            break;
+
+          case 'assigned-existing-story':
+            assignedExistingStoryCount += 1;
+            break;
+
+          case 'seeded-new-story':
+            seededNewStoryCount += 1;
+            break;
+        }
       }
 
-      span.setAttribute('news.persisted_count', count);
+      span.setAttribute('news.persisted_count', persistedCount);
 
-      return count;
+      span.setAttribute('news.clustered_count', clusteredCount);
+
+      span.setAttribute('news.clustered_already_assigned_count', alreadyAssignedCount);
+
+      span.setAttribute('news.clustered_existing_story_count', assignedExistingStoryCount);
+
+      span.setAttribute('news.clustered_seeded_story_count', seededNewStoryCount);
+
+      return {
+        persistedCount,
+        clusteredCount,
+        alreadyAssignedCount,
+        assignedExistingStoryCount,
+        seededNewStoryCount,
+      };
     },
   );
 
@@ -281,7 +344,7 @@ export async function processNewsDiscovery(
     {
       source_id: sourceId,
     },
-    persistedCount,
+    workflowResult.persistedCount,
   );
 
   return {
@@ -301,9 +364,18 @@ export async function processNewsDiscovery(
 
     duplicateCount: deduplicated.duplicates.length,
 
-    persistedCount,
+    persistedCount: workflowResult.persistedCount,
+
+    clusteredCount: workflowResult.clusteredCount,
+
+    alreadyAssignedCount: workflowResult.alreadyAssignedCount,
+
+    assignedExistingStoryCount: workflowResult.assignedExistingStoryCount,
+
+    seededNewStoryCount: workflowResult.seededNewStoryCount,
 
     requestedAt: validatedPayload.requestedAt,
+
     completedAt: now().toISOString(),
   };
 }

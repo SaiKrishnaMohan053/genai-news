@@ -11,12 +11,16 @@ import {
   NEWS_DISCOVERY_QUEUE_NAME,
 } from '@genai-news/queue';
 import { GNewsError } from '@genai-news/tools';
-import type { NewsSource, NewsSourceResult } from '@genai-news/shared';
+import type { NewsSource, NewsSourceResult, StoryArticleId } from '@genai-news/shared';
 import { QueueEvents } from 'bullmq';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createNewsDiscoveryWorker } from '../src/news-worker.js';
 import type { NewsSourceRegistry } from '../src/news/source-registry.js';
+
+import type { SemanticEmbeddingClient } from '@genai-news/tools';
+
+import { createProductionStoryClusteringService } from '../src/news/story-clustering/index.js';
 
 const redisUrl = process.env.REDIS_URL;
 const databaseUrl = process.env.DATABASE_URL;
@@ -44,6 +48,16 @@ async function countWorkerIntegrationArticles(database: DatabaseClient): Promise
       },
     },
   });
+}
+
+function createStoryClusterer() {
+  return {
+    clusterArticle: vi.fn(async (articleId: StoryArticleId) => ({
+      kind: 'seeded-new-story' as const,
+      articleId,
+      storyId: 'story-worker-integration',
+    })),
+  };
 }
 
 describe('news discovery worker integration', () => {
@@ -92,13 +106,7 @@ describe('news discovery worker integration', () => {
   });
 
   beforeEach(async () => {
-    await database.article.deleteMany({
-      where: {
-        canonicalUrl: {
-          startsWith: integrationArticleUrlPrefix,
-        },
-      },
-    });
+    await cleanupWorkerIntegrationData(database);
 
     await queue.drain(true);
 
@@ -110,13 +118,7 @@ describe('news discovery worker integration', () => {
   });
 
   afterAll(async () => {
-    await database.article.deleteMany({
-      where: {
-        canonicalUrl: {
-          startsWith: integrationArticleUrlPrefix,
-        },
-      },
-    });
+    await cleanupWorkerIntegrationData(database);
 
     await queueEvents.close();
     await queue.close();
@@ -136,6 +138,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository,
+      storyClusterer: createStoryClusterer(),
 
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
@@ -209,7 +212,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository,
-
+      storyClusterer: createStoryClusterer(),
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -279,7 +282,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository,
-
+      storyClusterer: createStoryClusterer(),
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -335,7 +338,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository,
-
+      storyClusterer: createStoryClusterer(),
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -389,7 +392,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository,
-
+      storyClusterer: createStoryClusterer(),
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -453,7 +456,7 @@ describe('news discovery worker integration', () => {
       connection: workerRedis,
       sourceRegistry,
       articleRepository: failingRepository,
-
+      storyClusterer: createStoryClusterer(),
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -524,6 +527,8 @@ describe('news discovery worker integration', () => {
 
       articleRepository: partiallyFailingRepository,
 
+      storyClusterer: createStoryClusterer(),
+
       freshnessPolicy: {
         maxAgeMs: 24 * 60 * 60 * 1000,
         maxFutureSkewMs: 5 * 60 * 1000,
@@ -578,6 +583,142 @@ describe('news discovery worker integration', () => {
       ).not.toBeNull();
 
       expect(await job.getState()).toBe('completed');
+
+      await job.remove();
+    } finally {
+      await worker.close();
+    }
+  });
+
+  it('recovers from transient clustering failure without duplicate stories or memberships', async () => {
+    fetchLatest.mockResolvedValue(createClusteringRetrySourceResult());
+
+    const articleRepository = createArticleRepository(database);
+
+    const embedding = createTransientFailingEmbeddingClient();
+
+    const storyClusteringService = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: embedding.client,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const worker = createNewsDiscoveryWorker({
+      connection: workerRedis,
+
+      sourceRegistry,
+
+      articleRepository,
+
+      storyClusterer: storyClusteringService,
+
+      freshnessPolicy: {
+        maxAgeMs: 24 * 60 * 60 * 1000,
+
+        maxFutureSkewMs: 5 * 60 * 1000,
+
+        missingPublishedAt: 'reject',
+      },
+
+      now: () => new Date('2026-08-27T16:00:00.000Z'),
+    });
+
+    try {
+      await worker.waitUntilReady();
+
+      const job = await enqueueNewsDiscovery(
+        queue,
+
+        {
+          sourceId: 'gnews',
+
+          limit: 10,
+
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+
+        `news-clustering-retry-${Date.now()}`,
+      );
+
+      const result = await job.waitUntilFinished(queueEvents, 15_000);
+
+      expect(result).toMatchObject({
+        sourceId: 'gnews',
+
+        fetchedCount: 2,
+
+        uniqueCount: 2,
+
+        persistedCount: 2,
+
+        clusteredCount: 2,
+
+        alreadyAssignedCount: 1,
+
+        assignedExistingStoryCount: 1,
+
+        seededNewStoryCount: 0,
+      });
+
+      expect(fetchLatest).toHaveBeenCalledTimes(2);
+
+      expect(embedding.getCalls()).toBe(2);
+
+      expect(await job.getState()).toBe('completed');
+
+      const articles = await database.article.findMany({
+        where: {
+          canonicalUrl: {
+            in: ['https://example.com/cluster-retry-a', 'https://example.com/cluster-retry-b'],
+          },
+        },
+
+        orderBy: {
+          canonicalUrl: 'asc',
+        },
+      });
+
+      expect(articles).toHaveLength(2);
+
+      const stories = await database.story.findMany({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: 'https://example.com/cluster-retry-',
+            },
+          },
+        },
+      });
+
+      expect(stories).toHaveLength(1);
+
+      const memberships = await database.storyMembership.findMany({
+        where: {
+          article: {
+            canonicalUrl: {
+              startsWith: 'https://example.com/cluster-retry-',
+            },
+          },
+        },
+
+        orderBy: {
+          articleId: 'asc',
+        },
+      });
+
+      expect(memberships).toHaveLength(2);
+
+      expect(new Set(memberships.map((membership) => membership.storyId)).size).toBe(1);
+
+      expect(memberships.filter((membership) => membership.kind === 'SEED')).toHaveLength(1);
+
+      expect(memberships.filter((membership) => membership.kind === 'MATCHED')).toHaveLength(1);
 
       await job.remove();
     } finally {
@@ -675,6 +816,105 @@ function createTwoUniqueSourceResult(): NewsSourceResult {
         url: 'https://example.com/partial-b',
 
         publishedAt: '2026-08-27T15:01:00.000Z',
+
+        publisher: {
+          name: 'Example Publisher',
+        },
+      },
+    ],
+  };
+}
+
+async function cleanupWorkerIntegrationData(database: DatabaseClient): Promise<void> {
+  await database.storyMembership.deleteMany({
+    where: {
+      article: {
+        canonicalUrl: {
+          startsWith: integrationArticleUrlPrefix,
+        },
+      },
+    },
+  });
+
+  await database.story.deleteMany({
+    where: {
+      seedArticle: {
+        canonicalUrl: {
+          startsWith: integrationArticleUrlPrefix,
+        },
+      },
+    },
+  });
+
+  await database.article.deleteMany({
+    where: {
+      canonicalUrl: {
+        startsWith: integrationArticleUrlPrefix,
+      },
+    },
+  });
+}
+
+function createTransientFailingEmbeddingClient() {
+  let calls = 0;
+
+  const client: SemanticEmbeddingClient = {
+    async embed(inputs) {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error('Temporary semantic embedding failure.');
+      }
+
+      return inputs.map((input) => ({
+        id: input.id,
+        embedding: [1, 0],
+      }));
+    },
+  };
+
+  return {
+    client,
+
+    getCalls() {
+      return calls;
+    },
+  };
+}
+
+function createClusteringRetrySourceResult(): NewsSourceResult {
+  return {
+    source: {
+      id: 'gnews',
+      name: 'GNews',
+      type: 'api',
+    },
+
+    fetchedAt: new Date('2026-08-27T15:59:00.000Z'),
+
+    articles: [
+      {
+        externalId: 'cluster-retry-a',
+
+        title: 'OpenAI launches enterprise AI platform',
+
+        url: 'https://example.com/cluster-retry-a',
+
+        publishedAt: '2026-08-27T15:00:00.000Z',
+
+        publisher: {
+          name: 'Example Publisher',
+        },
+      },
+
+      {
+        externalId: 'cluster-retry-b',
+
+        title: 'OpenAI unveils enterprise AI platform',
+
+        url: 'https://example.com/cluster-retry-b',
+
+        publishedAt: '2026-08-27T15:05:00.000Z',
 
         publisher: {
           name: 'Example Publisher',

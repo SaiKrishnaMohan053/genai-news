@@ -6,6 +6,8 @@ import {
 } from '@genai-news/observability';
 import { createRedisClient, createWorkerRedisClient } from '@genai-news/queue';
 import { createArticleRepository, createPrismaClient } from '@genai-news/database';
+import { createOpenAiSemanticEmbeddingClient } from '@genai-news/tools';
+import { createProductionStoryClusteringService } from './news/story-clustering/index.js';
 
 import { loadWorkerEnv } from './config/env.js';
 import { createWorkerHealthServer } from './health/server.js';
@@ -19,6 +21,23 @@ const env = loadWorkerEnv();
 const database = createPrismaClient(env.DATABASE_URL);
 
 const articleRepository = createArticleRepository(database);
+const semanticEmbeddingClient = createOpenAiSemanticEmbeddingClient({
+  apiKey: env.OPENAI_API_KEY,
+
+  model: env.STORY_EMBEDDING_MODEL,
+});
+
+const storyClusteringService = createProductionStoryClusteringService({
+  database,
+
+  embeddingClient: semanticEmbeddingClient,
+
+  candidatePolicy: {
+    maxTimeDistanceMs: env.STORY_CANDIDATE_WINDOW_HOURS * 60 * 60 * 1000,
+
+    includeWhenTimeUnknown: env.STORY_INCLUDE_UNKNOWN_TIME,
+  },
+});
 
 const sourceRegistry = createNewsSourceRegistry({
   gnewsApiKey: env.GNEWS_API_KEY,
@@ -57,6 +76,7 @@ const discoveryWorker = createNewsDiscoveryWorker({
   connection: discoveryWorkerRedis,
   sourceRegistry,
   articleRepository,
+  storyClusterer: storyClusteringService,
   freshnessPolicy,
   metrics: newsDiscoveryMetrics,
 });
@@ -130,6 +150,14 @@ discoveryWorker.on('completed', (job, result) => {
       normalizedCount: result.normalizedCount,
 
       normalizationRejectedCount: result.normalizationRejectedCount,
+
+      clusteredCount: result.clusteredCount,
+
+      alreadyAssignedCount: result.alreadyAssignedCount,
+
+      assignedExistingStoryCount: result.assignedExistingStoryCount,
+
+      seededNewStoryCount: result.seededNewStoryCount,
 
       freshCount: result.freshCount,
 

@@ -1,31 +1,51 @@
 import type { ArticleRepository } from '@genai-news/database';
+
 import {
   emitStructuredEvent,
   runWithSpan,
   type NewsDiscoveryMetrics,
   type StructuredEventLogger,
 } from '@genai-news/observability';
+
 import {
   NEWS_DISCOVERY_JOB_NAME,
   NEWS_DISCOVERY_QUEUE_NAME,
   type WorkerRedisClient,
 } from '@genai-news/queue';
+
 import type { NewsDiscoveryJobPayload } from '@genai-news/schemas';
+
 import type { FreshnessPolicy } from '@genai-news/shared';
+
 import { type Job, UnrecoverableError, Worker } from 'bullmq';
 
-import { processNewsDiscovery, type NewsDiscoveryResult } from './jobs/news-discovery.js';
+import {
+  processNewsDiscovery,
+  type NewsDiscoveryResult,
+  type NewsDiscoveryStoryClusterer,
+} from './jobs/news-discovery.js';
+
 import { classifyDiscoveryFailure } from './news/discovery-error-classifier.js';
+
 import { annotateDiscoveryFailureSpan } from './news/discovery-failure-observability.js';
+
 import type { NewsSourceRegistry } from './news/source-registry.js';
 
 export type CreateNewsDiscoveryWorkerOptions = {
   connection: WorkerRedisClient;
+
   sourceRegistry: NewsSourceRegistry;
+
   articleRepository: ArticleRepository;
+
+  storyClusterer: NewsDiscoveryStoryClusterer;
+
   freshnessPolicy: FreshnessPolicy;
+
   metrics?: NewsDiscoveryMetrics;
+
   logger?: StructuredEventLogger;
+
   now?: () => Date;
 };
 
@@ -39,19 +59,25 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
       }
 
       const sourceId = job.data.sourceId;
+
       const discoveryStartedAt = performance.now();
 
       try {
         const result = await runWithSpan(
           {
             tracerName: 'genai-news-worker',
+
             spanName: `job ${job.name}`,
 
             attributes: {
               'messaging.system': 'bullmq',
+
               'messaging.destination.name': NEWS_DISCOVERY_QUEUE_NAME,
+
               'messaging.operation.name': 'process',
+
               'job.name': job.name,
+
               'news.source.id': sourceId,
 
               ...(job.id
@@ -64,25 +90,31 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
           async (span) => {
             try {
-              const discoveryResult = await processNewsDiscovery(job.data, {
-                sourceRegistry: options.sourceRegistry,
+              const discoveryResult = await processNewsDiscovery(
+                job.data,
 
-                articleRepository: options.articleRepository,
+                {
+                  sourceRegistry: options.sourceRegistry,
 
-                freshnessPolicy: options.freshnessPolicy,
+                  articleRepository: options.articleRepository,
 
-                ...(options.metrics
-                  ? {
-                      metrics: options.metrics,
-                    }
-                  : {}),
+                  storyClusterer: options.storyClusterer,
 
-                ...(options.now
-                  ? {
-                      now: options.now,
-                    }
-                  : {}),
-              });
+                  freshnessPolicy: options.freshnessPolicy,
+
+                  ...(options.metrics
+                    ? {
+                        metrics: options.metrics,
+                      }
+                    : {}),
+
+                  ...(options.now
+                    ? {
+                        now: options.now,
+                      }
+                    : {}),
+                },
+              );
 
               span.setAttribute('news.fetched_count', discoveryResult.fetchedCount);
 
@@ -93,6 +125,23 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
               span.setAttribute('news.unique_count', discoveryResult.uniqueCount);
 
               span.setAttribute('news.persisted_count', discoveryResult.persistedCount);
+
+              span.setAttribute('news.clustered_count', discoveryResult.clusteredCount);
+
+              span.setAttribute(
+                'news.clustered_already_assigned_count',
+                discoveryResult.alreadyAssignedCount,
+              );
+
+              span.setAttribute(
+                'news.clustered_existing_story_count',
+                discoveryResult.assignedExistingStoryCount,
+              );
+
+              span.setAttribute(
+                'news.clustered_seeded_story_count',
+                discoveryResult.seededNewStoryCount,
+              );
 
               return discoveryResult;
             } catch (error) {
@@ -109,6 +158,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
+
           status: 'completed',
         });
 
@@ -116,6 +166,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
           {
             source_id: sourceId,
           },
+
           discoveryDurationSeconds,
         );
 
@@ -125,6 +176,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
         options.metrics?.jobsTotal.inc({
           source_id: sourceId,
+
           status: 'failed',
         });
 
@@ -132,6 +184,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
           {
             source_id: sourceId,
           },
+
           discoveryDurationSeconds,
         );
 
@@ -140,12 +193,16 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
         if (options.logger) {
           emitStructuredEvent({
             logger: options.logger,
+
             event: 'news.discovery.failed',
+
             level: 'error',
 
             attributes: {
               sourceId,
+
               failureReason: classification.reason,
+
               retryable: classification.retryable,
 
               ...(job.id
@@ -171,6 +228,7 @@ export function createNewsDiscoveryWorker(options: CreateNewsDiscoveryWorkerOpti
 
     {
       connection: options.connection,
+
       concurrency: 2,
     },
   );

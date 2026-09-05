@@ -1,9 +1,17 @@
-import type { NewsSource, NewsSourceResult, NormalizedArticle } from '@genai-news/shared';
+import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
+
+import type {
+  NewsSource,
+  NewsSourceResult,
+  NormalizedArticle,
+  StoryArticleId,
+} from '@genai-news/shared';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { processNewsDiscovery } from '../src/jobs/news-discovery.js';
+
 import type { NewsSourceRegistry } from '../src/news/source-registry.js';
-import { createMetricsRegistry, createNewsDiscoveryMetrics } from '@genai-news/observability';
 
 const now = new Date('2026-08-27T16:00:00.000Z');
 
@@ -20,9 +28,13 @@ function createSourceResult(): NewsSourceResult {
     articles: [
       {
         externalId: '1',
+
         title: 'Fresh article',
+
         url: 'https://example.com/fresh',
+
         publishedAt: '2026-08-27T15:00:00.000Z',
+
         publisher: {
           name: 'Publisher A',
         },
@@ -30,9 +42,13 @@ function createSourceResult(): NewsSourceResult {
 
       {
         externalId: '2',
+
         title: 'Old article',
+
         url: 'https://example.com/old',
+
         publishedAt: '2026-08-20T15:00:00.000Z',
+
         publisher: {
           name: 'Publisher A',
         },
@@ -40,16 +56,23 @@ function createSourceResult(): NewsSourceResult {
 
       {
         externalId: '3',
+
         title: '   ',
+
         url: 'https://example.com/invalid',
+
         publishedAt: '2026-08-27T15:00:00.000Z',
       },
 
       {
         externalId: '4',
+
         title: 'Fresh article',
+
         url: 'https://example.com/duplicate',
+
         publishedAt: '2026-08-27T15:00:00.000Z',
+
         publisher: {
           name: 'Publisher A',
         },
@@ -78,13 +101,73 @@ function createRegistry(result: NewsSourceResult): NewsSourceRegistry {
   };
 }
 
+function createStoryClusterer() {
+  return {
+    clusterArticle: vi.fn(async (articleId: StoryArticleId) => ({
+      kind: 'seeded-new-story' as const,
+
+      articleId,
+
+      storyId: 'story-test',
+    })),
+  };
+}
+
+function createPersistedArticle(
+  article: NormalizedArticle,
+
+  id: string,
+) {
+  return {
+    id,
+
+    title: article.title,
+
+    url: article.url,
+
+    canonicalUrl: article.canonicalUrl,
+
+    sourceId: article.source.id,
+
+    sourceName: article.source.name,
+
+    sourceType: article.source.type,
+
+    publisherId: article.publisher?.id ?? null,
+
+    publisherName: article.publisher?.name ?? null,
+
+    externalId: article.externalId,
+
+    publishedAt: article.publishedAt,
+
+    firstDiscoveredAt: article.discoveredAt,
+
+    lastSeenAt: article.discoveredAt,
+
+    author: article.author,
+
+    summary: article.summary,
+
+    category: article.category,
+
+    metadata: article.metadata,
+
+    createdAt: now,
+
+    updatedAt: now,
+  };
+}
+
 describe('processNewsDiscovery', () => {
   it('records discovery stage metrics', async () => {
     const result = createSourceResult();
 
     const registry = createMetricsRegistry({
       service: 'worker',
+
       environment: 'test',
+
       collectDefaults: false,
     });
 
@@ -93,43 +176,18 @@ describe('processNewsDiscovery', () => {
     await processNewsDiscovery(
       {
         sourceId: 'gnews',
+
         limit: 10,
+
         requestedAt: '2026-08-27T15:58:00.000Z',
       },
+
       {
         sourceRegistry: createRegistry(result),
 
         articleRepository: {
           async persist(article) {
-            return {
-              id: 'persisted-1',
-
-              title: article.title,
-              url: article.url,
-              canonicalUrl: article.canonicalUrl,
-
-              sourceId: article.source.id,
-              sourceName: article.source.name,
-              sourceType: article.source.type,
-
-              publisherId: article.publisher?.id ?? null,
-              publisherName: article.publisher?.name ?? null,
-
-              externalId: article.externalId,
-
-              publishedAt: article.publishedAt,
-              firstDiscoveredAt: article.discoveredAt,
-              lastSeenAt: article.discoveredAt,
-
-              author: article.author,
-              summary: article.summary,
-              category: article.category,
-
-              metadata: article.metadata,
-
-              createdAt: now,
-              updatedAt: now,
-            };
+            return createPersistedArticle(article, 'persisted-1');
           },
 
           async findByCanonicalUrl() {
@@ -137,9 +195,13 @@ describe('processNewsDiscovery', () => {
           },
         },
 
+        storyClusterer: createStoryClusterer(),
+
         freshnessPolicy: {
           maxAgeMs: 24 * 60 * 60 * 1000,
+
           maxFutureSkewMs: 5 * 60 * 1000,
+
           missingPublishedAt: 'reject',
         },
 
@@ -174,17 +236,22 @@ describe('processNewsDiscovery', () => {
     expect(output).toContain('source_id="gnews"');
   });
 
-  it('runs fetch, normalization, freshness, deduplication, and persistence', async () => {
+  it('runs fetch, normalization, freshness, deduplication, persistence, and clustering', async () => {
     const result = createSourceResult();
 
     const persisted: NormalizedArticle[] = [];
 
+    const storyClusterer = createStoryClusterer();
+
     const output = await processNewsDiscovery(
       {
         sourceId: 'gnews',
+
         limit: 10,
+
         requestedAt: '2026-08-27T15:58:00.000Z',
       },
+
       {
         sourceRegistry: createRegistry(result),
 
@@ -192,35 +259,7 @@ describe('processNewsDiscovery', () => {
           async persist(article) {
             persisted.push(article);
 
-            return {
-              id: `persisted-${persisted.length}`,
-
-              title: article.title,
-              url: article.url,
-              canonicalUrl: article.canonicalUrl,
-
-              sourceId: article.source.id,
-              sourceName: article.source.name,
-              sourceType: article.source.type,
-
-              publisherId: article.publisher?.id ?? null,
-              publisherName: article.publisher?.name ?? null,
-
-              externalId: article.externalId,
-
-              publishedAt: article.publishedAt,
-              firstDiscoveredAt: article.discoveredAt,
-              lastSeenAt: article.discoveredAt,
-
-              author: article.author,
-              summary: article.summary,
-              category: article.category,
-
-              metadata: article.metadata,
-
-              createdAt: now,
-              updatedAt: now,
-            };
+            return createPersistedArticle(article, `persisted-${persisted.length}`);
           },
 
           async findByCanonicalUrl() {
@@ -228,9 +267,13 @@ describe('processNewsDiscovery', () => {
           },
         },
 
+        storyClusterer,
+
         freshnessPolicy: {
           maxAgeMs: 24 * 60 * 60 * 1000,
+
           maxFutureSkewMs: 5 * 60 * 1000,
+
           missingPublishedAt: 'reject',
         },
 
@@ -244,23 +287,39 @@ describe('processNewsDiscovery', () => {
       fetchedCount: 4,
 
       normalizedCount: 3,
+
       normalizationRejectedCount: 1,
 
       freshCount: 2,
+
       freshnessRejectedCount: 1,
 
       uniqueCount: 1,
+
       duplicateCount: 1,
 
       persistedCount: 1,
 
+      clusteredCount: 1,
+
+      alreadyAssignedCount: 0,
+
+      assignedExistingStoryCount: 0,
+
+      seededNewStoryCount: 1,
+
       requestedAt: '2026-08-27T15:58:00.000Z',
+
       completedAt: '2026-08-27T16:00:00.000Z',
     });
 
     expect(persisted).toHaveLength(1);
 
     expect(persisted[0]?.title).toBe('Fresh article');
+
+    expect(storyClusterer.clusterArticle).toHaveBeenCalledTimes(1);
+
+    expect(storyClusterer.clusterArticle).toHaveBeenCalledWith('persisted-1');
   });
 
   it('rejects an unsupported source', async () => {
@@ -268,20 +327,28 @@ describe('processNewsDiscovery', () => {
       processNewsDiscovery(
         {
           sourceId: 'unknown',
+
           limit: 10,
+
           requestedAt: '2026-08-27T15:58:00.000Z',
         },
+
         {
           sourceRegistry: createRegistry(createSourceResult()),
 
           articleRepository: {
             persist: vi.fn(),
+
             findByCanonicalUrl: vi.fn(),
           },
 
+          storyClusterer: createStoryClusterer(),
+
           freshnessPolicy: {
             maxAgeMs: 24 * 60 * 60 * 1000,
+
             maxFutureSkewMs: 5 * 60 * 1000,
+
             missingPublishedAt: 'reject',
           },
 
@@ -296,20 +363,28 @@ describe('processNewsDiscovery', () => {
       processNewsDiscovery(
         {
           sourceId: '',
+
           limit: 0,
+
           requestedAt: 'invalid',
         },
+
         {
           sourceRegistry: createRegistry(createSourceResult()),
 
           articleRepository: {
             persist: vi.fn(),
+
             findByCanonicalUrl: vi.fn(),
           },
 
+          storyClusterer: createStoryClusterer(),
+
           freshnessPolicy: {
             maxAgeMs: 24 * 60 * 60 * 1000,
+
             maxFutureSkewMs: 5 * 60 * 1000,
+
             missingPublishedAt: 'reject',
           },
 
@@ -319,20 +394,27 @@ describe('processNewsDiscovery', () => {
     ).rejects.toThrow();
   });
 
-  it('does not persist stale articles', async () => {
+  it('does not persist or cluster stale articles', async () => {
     const persist = vi.fn();
+
+    const storyClusterer = createStoryClusterer();
 
     await processNewsDiscovery(
       {
         sourceId: 'gnews',
+
         limit: 10,
+
         requestedAt: '2026-08-27T15:58:00.000Z',
       },
+
       {
         sourceRegistry: createRegistry({
           source: {
             id: 'gnews',
+
             name: 'GNews',
+
             type: 'api',
           },
 
@@ -341,7 +423,9 @@ describe('processNewsDiscovery', () => {
           articles: [
             {
               title: 'Old article',
+
               url: 'https://example.com/old',
+
               publishedAt: '2026-08-20T15:00:00.000Z',
             },
           ],
@@ -353,9 +437,13 @@ describe('processNewsDiscovery', () => {
           findByCanonicalUrl: vi.fn(),
         },
 
+        storyClusterer,
+
         freshnessPolicy: {
           maxAgeMs: 24 * 60 * 60 * 1000,
+
           maxFutureSkewMs: 5 * 60 * 1000,
+
           missingPublishedAt: 'reject',
         },
 
@@ -364,5 +452,171 @@ describe('processNewsDiscovery', () => {
     );
 
     expect(persist).not.toHaveBeenCalled();
+
+    expect(storyClusterer.clusterArticle).not.toHaveBeenCalled();
+  });
+
+  it('clusters only after article persistence succeeds', async () => {
+    const storyClusterer = createStoryClusterer();
+
+    const persist = vi.fn(async () => {
+      throw new Error('database unavailable');
+    });
+
+    await expect(
+      processNewsDiscovery(
+        {
+          sourceId: 'gnews',
+
+          limit: 10,
+
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+
+        {
+          sourceRegistry: createRegistry({
+            source: {
+              id: 'gnews',
+
+              name: 'GNews',
+
+              type: 'api',
+            },
+
+            fetchedAt: new Date('2026-08-27T15:59:00.000Z'),
+
+            articles: [
+              {
+                title: 'Fresh article',
+
+                url: 'https://example.com/fresh',
+
+                publishedAt: '2026-08-27T15:00:00.000Z',
+              },
+            ],
+          }),
+
+          articleRepository: {
+            persist,
+
+            findByCanonicalUrl: vi.fn(),
+          },
+
+          storyClusterer,
+
+          freshnessPolicy: {
+            maxAgeMs: 24 * 60 * 60 * 1000,
+
+            maxFutureSkewMs: 5 * 60 * 1000,
+
+            missingPublishedAt: 'reject',
+          },
+
+          now: () => now,
+        },
+      ),
+    ).rejects.toThrow('database unavailable');
+
+    expect(storyClusterer.clusterArticle).not.toHaveBeenCalled();
+  });
+
+  it('fails discovery when story clustering fails after persistence', async () => {
+    const storyClusterer = {
+      clusterArticle: vi.fn(async () => {
+        throw new Error('semantic provider unavailable');
+      }),
+    };
+
+    await expect(
+      processNewsDiscovery(
+        {
+          sourceId: 'gnews',
+
+          limit: 10,
+
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+
+        {
+          sourceRegistry: createRegistry(createSourceResult()),
+
+          articleRepository: {
+            async persist(article) {
+              return createPersistedArticle(article, 'persisted-1');
+            },
+
+            findByCanonicalUrl: vi.fn(),
+          },
+
+          storyClusterer,
+
+          freshnessPolicy: {
+            maxAgeMs: 24 * 60 * 60 * 1000,
+
+            maxFutureSkewMs: 5 * 60 * 1000,
+
+            missingPublishedAt: 'reject',
+          },
+
+          now: () => now,
+        },
+      ),
+    ).rejects.toThrow('semantic provider unavailable');
+
+    expect(storyClusterer.clusterArticle).toHaveBeenCalledWith('persisted-1');
+  });
+
+  it('counts already-assigned clustering results separately', async () => {
+    const storyClusterer = {
+      clusterArticle: vi.fn(async (articleId: StoryArticleId) => ({
+        kind: 'already-assigned' as const,
+
+        articleId,
+
+        storyId: 'story-existing',
+      })),
+    };
+
+    const result = await processNewsDiscovery(
+      {
+        sourceId: 'gnews',
+
+        limit: 10,
+
+        requestedAt: '2026-08-27T15:58:00.000Z',
+      },
+
+      {
+        sourceRegistry: createRegistry(createSourceResult()),
+
+        articleRepository: {
+          async persist(article) {
+            return createPersistedArticle(article, 'persisted-1');
+          },
+
+          findByCanonicalUrl: vi.fn(),
+        },
+
+        storyClusterer,
+
+        freshnessPolicy: {
+          maxAgeMs: 24 * 60 * 60 * 1000,
+
+          maxFutureSkewMs: 5 * 60 * 1000,
+
+          missingPublishedAt: 'reject',
+        },
+
+        now: () => now,
+      },
+    );
+
+    expect(result.clusteredCount).toBe(1);
+
+    expect(result.alreadyAssignedCount).toBe(1);
+
+    expect(result.assignedExistingStoryCount).toBe(0);
+
+    expect(result.seededNewStoryCount).toBe(0);
   });
 });

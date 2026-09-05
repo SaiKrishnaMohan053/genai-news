@@ -23,6 +23,17 @@ const envSchema = z.object({
   NEWS_FRESHNESS_HOURS: z.coerce.number().positive().default(24),
 
   NEWS_MAX_FUTURE_SKEW_MINUTES: z.coerce.number().nonnegative().default(5),
+
+  OPENAI_API_KEY: z.string().trim().min(1),
+
+  STORY_EMBEDDING_MODEL: z.string().trim().min(1).default('text-embedding-3-small'),
+
+  STORY_CANDIDATE_WINDOW_HOURS: z.coerce.number().positive().default(24),
+
+  STORY_INCLUDE_UNKNOWN_TIME: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type WorkerEnv = z.infer<typeof envSchema>;
