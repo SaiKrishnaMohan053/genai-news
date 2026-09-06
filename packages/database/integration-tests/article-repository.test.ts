@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createArticleRepository, createPrismaClient, type DatabaseClient } from '../src/index.js';
 
 const databaseUrl = process.env.DATABASE_URL;
+const testUrlPrefix = 'https://article-repository.integration.example.com/';
 
 if (!databaseUrl) {
   throw new Error('DATABASE_URL is required for database integration tests');
@@ -17,11 +18,11 @@ describe('article repository integration', () => {
   });
 
   beforeEach(async () => {
-    await database.article.deleteMany();
+    await cleanup(database);
   });
 
   afterAll(async () => {
-    await database.article.deleteMany();
+    await cleanup(database);
     await database.$disconnect();
   });
 
@@ -47,7 +48,15 @@ describe('article repository integration', () => {
       lastSeenAt: article.discoveredAt,
     });
 
-    expect(await database.article.count()).toBe(1);
+    expect(
+      await database.article.count({
+        where: {
+          canonicalUrl: {
+            startsWith: testUrlPrefix,
+          },
+        },
+      }),
+    ).toBe(1);
   });
 
   it('is idempotent for repeated canonical URLs', async () => {
@@ -61,7 +70,15 @@ describe('article repository integration', () => {
 
     expect(second.id).toBe(first.id);
 
-    expect(await database.article.count()).toBe(1);
+    expect(
+      await database.article.count({
+        where: {
+          canonicalUrl: {
+            startsWith: testUrlPrefix,
+          },
+        },
+      }),
+    ).toBe(1);
   });
 
   it('updates lastSeenAt on rediscovery', async () => {
@@ -177,9 +194,17 @@ describe('article repository integration', () => {
 
     await Promise.all(writes);
 
-    expect(await database.article.count()).toBe(1);
+    expect(
+      await database.article.count({
+        where: {
+          canonicalUrl: {
+            startsWith: testUrlPrefix,
+          },
+        },
+      }),
+    ).toBe(1);
 
-    const persisted = await repository.findByCanonicalUrl('https://example.com/article');
+    const persisted = await repository.findByCanonicalUrl(`${testUrlPrefix}article`);
 
     expect(persisted).not.toBeNull();
 
@@ -195,19 +220,27 @@ describe('article repository integration', () => {
 
     await repository.persist(
       createArticle({
-        canonicalUrl: 'https://example.com/article-1',
-        url: 'https://example.com/article-1',
+        canonicalUrl: `${testUrlPrefix}article-1`,
+        url: `${testUrlPrefix}article-1`,
       }),
     );
 
     await repository.persist(
       createArticle({
-        canonicalUrl: 'https://example.com/article-2',
-        url: 'https://example.com/article-2',
+        canonicalUrl: `${testUrlPrefix}article-2`,
+        url: `${testUrlPrefix}article-2`,
       }),
     );
 
-    expect(await database.article.count()).toBe(2);
+    expect(
+      await database.article.count({
+        where: {
+          canonicalUrl: {
+            startsWith: testUrlPrefix,
+          },
+        },
+      }),
+    ).toBe(2);
   });
 
   it('persists nullable fields and JSON metadata', async () => {
@@ -260,8 +293,8 @@ describe('article repository integration', () => {
 
     await repository.persist(
       createArticle({
-        canonicalUrl: 'https://example.com/older',
-        url: 'https://example.com/older',
+        canonicalUrl: `${testUrlPrefix}older`,
+        url: `${testUrlPrefix}older`,
         externalId: 'older',
         publishedAt: new Date('2026-08-27T12:00:00.000Z'),
       }),
@@ -269,20 +302,24 @@ describe('article repository integration', () => {
 
     await repository.persist(
       createArticle({
-        canonicalUrl: 'https://example.com/newer',
-        url: 'https://example.com/newer',
+        canonicalUrl: `${testUrlPrefix}newer`,
+        url: `${testUrlPrefix}newer`,
         externalId: 'newer',
         publishedAt: new Date('2026-08-27T14:00:00.000Z'),
       }),
     );
 
     const articles = await repository.listRecent({
-      limit: 10,
+      limit: 100,
     });
 
-    expect(articles.map((article) => article.canonicalUrl)).toEqual([
-      'https://example.com/newer',
-      'https://example.com/older',
+    const integrationArticles = articles.filter((article) =>
+      article.canonicalUrl.startsWith(testUrlPrefix),
+    );
+
+    expect(integrationArticles.map((article) => article.canonicalUrl)).toEqual([
+      `${testUrlPrefix}newer`,
+      `${testUrlPrefix}older`,
     ]);
   });
 
@@ -292,16 +329,16 @@ describe('article repository integration', () => {
     await Promise.all([
       repository.persist(
         createArticle({
-          canonicalUrl: 'https://example.com/1',
-          url: 'https://example.com/1',
+          canonicalUrl: `${testUrlPrefix}1`,
+          url: `${testUrlPrefix}1`,
           externalId: '1',
         }),
       ),
 
       repository.persist(
         createArticle({
-          canonicalUrl: 'https://example.com/2',
-          url: 'https://example.com/2',
+          canonicalUrl: `${testUrlPrefix}2`,
+          url: `${testUrlPrefix}2`,
           externalId: '2',
         }),
       ),
@@ -329,8 +366,8 @@ function createArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedAr
   return {
     title: 'Example article',
 
-    url: 'https://example.com/article',
-    canonicalUrl: 'https://example.com/article',
+    url: `${testUrlPrefix}article`,
+    canonicalUrl: `${testUrlPrefix}article`,
 
     source: {
       id: 'gnews',
@@ -359,4 +396,14 @@ function createArticle(overrides: Partial<NormalizedArticle> = {}): NormalizedAr
 
     ...overrides,
   };
+}
+
+async function cleanup(database: DatabaseClient): Promise<void> {
+  await database.article.deleteMany({
+    where: {
+      canonicalUrl: {
+        startsWith: testUrlPrefix,
+      },
+    },
+  });
 }

@@ -6,3 +6,4 @@ export * from './report.js';
 export * from './validate-corpus.js';
 export * from './validation/index.js';
 export * from './story-clustering/index.js';
+export * from './phase2-release-gate.js';

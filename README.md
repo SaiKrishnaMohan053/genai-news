@@ -21,22 +21,22 @@ Completed capabilities include:
 - pnpm monorepo architecture
 - Next.js frontend foundation
 - Fastify API foundation
-- Dedicated background worker
+- dedicated background worker
 - PostgreSQL persistence
 - Prisma schema and migrations
 - Redis infrastructure
 - BullMQ background job processing
-- Shared cross-service schemas
-- Structured Pino logging
-- Request and job correlation
+- shared cross-service schemas
+- structured Pino logging
+- request and job correlation
 - OpenTelemetry tracing foundation
 - API and worker health/readiness checks
-- Unit and integration testing
-- Infrastructure smoke testing
-- Local Docker environment
-- Automated database migration service
+- unit and integration testing
+- infrastructure smoke testing
+- local Docker environment
+- automated database migration service
 - GitHub Actions CI pipeline
-- Dependency failure and recovery validation
+- dependency failure and recovery validation
 
 Phase 0 intentionally introduced no news-processing or AI behavior.
 
@@ -72,9 +72,96 @@ Completed capabilities include:
 - end-to-end PostgreSQL and Redis integration validation
 - clean-runner CI validation
 
-Phase 1 remains intentionally deterministic.
+Phase 1 remains the deterministic ingestion foundation.
 
-**No LLM-based research, verification, ranking, content generation, image generation, autonomous agents, or publishing behavior is implemented yet.**
+### Phase 2: Canonical Story Clustering ✅ Complete
+
+Phase 2 introduced canonical story clustering on top of the validated Phase 1 article pipeline.
+
+The goal of Phase 2 is to group multiple articles that report the same underlying event into one stable canonical story while remaining conservative about false merges.
+
+Completed capabilities include:
+
+- story domain contracts and clustering invariants
+- labelled Phase 2 story-clustering evaluation corpus
+- deterministic story feature extraction
+- temporal high-recall candidate generation
+- lexical similarity diagnostics
+- semantic similarity evaluation
+- OpenAI `text-embedding-3-small` semantic embeddings
+- frozen semantic match threshold of `0.70`
+- incremental representative-based story assignment
+- stable seed-based representative policy
+- ambiguous multi-match protection
+- transitive-bridge protection
+- deterministic story identity policy
+- PostgreSQL `Story` persistence
+- PostgreSQL story-membership persistence and provenance
+- idempotent membership assignment
+- concurrency-safe seed creation
+- competing-assignment conflict protection
+- retry-safe clustering after partial progress
+- BullMQ clustering workflow integration
+- story retrieval API
+- minimal story inspection frontend
+- story-clustering Prometheus metrics
+- structured clustering events
+- OpenTelemetry clustering spans
+- replay and idempotency validation
+- same-article concurrency validation
+- competing-assignment concurrency validation
+- partial-failure validation
+- BullMQ retry/replay validation
+- deterministic Phase 2 semantic regression snapshot
+- combined Phase 1 + Phase 2 release gate
+
+Frozen Phase 2 v1 semantic policy:
+
+```text
+Model:      text-embedding-3-small
+Threshold:  0.70
+
+TP: 9
+FP: 0
+TN: 12
+FN: 0
+
+Precision:        1.00
+Recall:           1.00
+False merge rate: 0.00
+False split rate: 0.00
+```
+
+Important clustering invariants include:
+
+- one article belongs to at most one active story
+- the seed article remains the stable representative in v1
+- ambiguous multiple matches do not force a merge
+- replay does not create duplicate stories or memberships
+- concurrent assignment does not silently reassign an article
+- clustering does not perform implicit transitive union
+- automatic story splitting is not performed in Phase 2
+- clustering failures after article persistence are retry-safe
+
+Phase 2 introduces semantic embeddings for story matching, but does **not** yet introduce LLM-based research agents, verification agents, ranking agents, content-generation agents, autonomous publishing, or social-media publishing.
+
+### Current Development Phase
+
+Phase 2 is complete.
+
+The validated application foundation now provides:
+
+```text
+External News Sources
+        ↓
+Validated Articles
+        ↓
+Canonical Stories
+        ↓
+Stable Story Provenance
+```
+
+Phase 3 will introduce the first agentic capability on top of these validated deterministic layers.
 
 ---
 
@@ -92,7 +179,7 @@ Phase 1 remains intentionally deterministic.
                          │        API          │
                          └───────┬─────┬───────┘
                                  │     │
-                    Article Read │     │ Discovery Job
+                    Read APIs    │     │ Discovery Job
                                  │     ▼
                                  │   Redis / BullMQ
                                  │          │
@@ -107,21 +194,35 @@ Phase 1 remains intentionally deterministic.
                                  │     └── RSS
                                  │          │
                                  │          ▼
-                                 │   Normalize
+                                 │      Normalize
                                  │          │
                                  │          ▼
-                                 │   Freshness Filter
+                                 │      Freshness
                                  │          │
                                  │          ▼
-                                 │   Deduplicate
+                                 │      Deduplicate
                                  │          │
                                  │          ▼
+                                 │   Persist Article
+                                 │          │
+                                 │          ▼
+                                 │ Candidate Stories
+                                 │          │
+                                 │          ▼
+                                 │ Semantic Compare
+                                 │          │
+                                 │          ▼
+                                 │ Story Assignment
+                                 │          │
                                  └────► PostgreSQL
+                                       ├── Articles
+                                       ├── Stories
+                                       └── Story Memberships
 ```
 
-Phase 1 deliberately keeps news processing deterministic.
+Phase 1 remains deterministic ingestion infrastructure. Phase 2 adds validated semantic story clustering on top of that foundation.
 
-Future AI agents will consume the validated news layer rather than owning ingestion, normalization, persistence, or queue infrastructure.
+Future AI agents will consume the validated article and canonical-story layers rather than owning ingestion, normalization, persistence, deduplication, clustering infrastructure, or queue infrastructure.
 
 ---
 
@@ -140,8 +241,8 @@ genai-news/
 │   ├── database/         # Prisma and PostgreSQL access
 │   ├── queue/            # Redis and BullMQ infrastructure
 │   ├── observability/    # Logging, metrics, and tracing
-│   ├── shared/           # Deterministic news domain logic
-│   ├── tools/            # External news source integrations
+│   ├── shared/           # Deterministic news/story domain logic
+│   ├── tools/            # External source and embedding integrations
 │   ├── evals/            # Deterministic evaluation infrastructure
 │   └── agents/           # Multi-agent implementations in later phases
 │
@@ -161,16 +262,16 @@ genai-news/
 
 Next.js + TypeScript frontend.
 
-Phase 1 provides a minimal inspection surface for the deterministic news pipeline.
-
 Current responsibilities include:
 
 - application frontend foundation
 - discovery interaction
 - persisted article inspection
+- canonical story inspection
+- story membership/provenance inspection
 - production build validation
 
-The complete research, verification, content review, human approval, and publishing dashboard will be introduced in later phases.
+The complete research, verification, ranking, content review, human approval, and publishing dashboard will be introduced in later phases.
 
 ### `apps/api`
 
@@ -187,6 +288,8 @@ Current responsibilities include:
 - news discovery requests
 - BullMQ job enqueueing
 - persisted article retrieval
+- canonical story retrieval
+- story-detail retrieval with membership provenance
 - Prometheus metrics exposure
 - OpenTelemetry instrumentation
 - liveness and readiness checks
@@ -200,6 +303,8 @@ GET  /metrics
 
 POST /api/news/discover
 GET  /api/news/articles
+GET  /api/news/stories
+GET  /api/news/stories/:storyId
 ```
 
 News discovery requests are validated at the API boundary and converted into typed BullMQ jobs.
@@ -218,20 +323,27 @@ Current responsibilities include:
 - freshness filtering
 - deterministic deduplication
 - article persistence
+- story candidate generation
+- semantic representative comparison
+- incremental story assignment
+- story persistence
+- membership provenance persistence
+- clustering replay/idempotency handling
 - retry handling
 - terminal failure handling
 - structured discovery events
+- structured clustering events
 - discovery metrics
-- OpenTelemetry job spans
+- story-clustering metrics
+- OpenTelemetry discovery spans
+- OpenTelemetry clustering spans
 - worker liveness/readiness checks
 
-The worker coordinates deterministic application behavior but does not contain provider-specific parsing or duplicate the shared news-domain rules.
+The worker coordinates deterministic and validated application behavior but does not contain provider-specific parsing or duplicate shared news/story-domain rules.
 
 ---
 
-## News Discovery Pipeline
-
-Phase 1 introduced the following deterministic processing pipeline:
+## News Discovery & Story Clustering Pipeline
 
 ```text
 Discovery Request
@@ -259,7 +371,19 @@ Freshness Policy
 Deterministic Deduplication
        │
        ▼
-PostgreSQL Persistence
+PostgreSQL Article Persistence
+       │
+       ▼
+Story Candidate Generation
+       │
+       ▼
+Semantic Representative Comparison
+       │
+       ▼
+Incremental Story Assignment
+       │
+       ▼
+Story + Membership Persistence
 ```
 
 Each stage has a defined responsibility and is independently testable.
@@ -323,7 +447,7 @@ future-published-at
 
 ### Deduplication
 
-Phase 1 uses deterministic ordered deduplication.
+Phase 1 uses deterministic ordered article deduplication.
 
 Duplicate keys are evaluated using:
 
@@ -335,7 +459,7 @@ Duplicate keys are evaluated using:
 
 Only accepted unique representatives register deduplication keys, preventing unintended transitive merges.
 
-### Persistence
+### Article Persistence
 
 Accepted unique articles are persisted to PostgreSQL.
 
@@ -344,6 +468,64 @@ Canonical URL acts as the persistence-level idempotency boundary.
 Repeated discovery and retry execution therefore update the existing article rather than creating duplicate rows.
 
 This also protects recovery after partial persistence.
+
+### Story Candidate Generation
+
+Phase 2 uses conservative, high-recall candidate generation before semantic comparison.
+
+Candidate generation is temporal and bounded so the semantic comparison stage does not compare every incoming article against every persisted story.
+
+Candidate generation is intentionally a retrieval/filtering step, not a final match decision.
+
+### Semantic Story Matching
+
+Phase 2 compares an incoming article against candidate story representatives using semantic embeddings.
+
+The frozen v1 policy uses:
+
+```text
+Model: text-embedding-3-small
+Match threshold: 0.70
+```
+
+The semantic threshold was selected from the labelled Phase 2 evaluation corpus and frozen into the release baseline.
+
+### Incremental Story Assignment
+
+The clustering algorithm is incremental and representative-based.
+
+Assignment behavior:
+
+```text
+0 candidate matches  → seed a new story
+1 candidate match    → join the existing story
+2+ candidate matches → treat as ambiguous and seed a new story
+```
+
+The implementation deliberately avoids connected-components clustering and implicit transitive union.
+
+### Story Identity & Representative Policy
+
+Phase 2 v1 uses a stable seed-based representative.
+
+The representative article does not automatically change as new memberships arrive.
+
+This keeps clustering behavior explainable and prevents story identity drift caused by later articles.
+
+### Story Persistence & Provenance
+
+Canonical stories and article memberships are persisted in PostgreSQL.
+
+Membership provenance records include:
+
+- membership kind (`SEED` or `MATCHED`)
+- semantic score
+- decision signals
+- decision reason
+- matched-against article ID
+- clustering version
+
+An article can belong to at most one active story.
 
 ---
 
@@ -371,7 +553,12 @@ Provides:
 - database connectivity
 - health checks
 - article repository
+- story repository
 - idempotent article persistence
+- story persistence
+- story-membership persistence
+- concurrency conflict recovery
+- story list/detail read models
 
 ### `@genai-news/queue`
 
@@ -387,7 +574,7 @@ Provides:
 - discovery job configuration
 - retry/backoff configuration
 
-News discovery jobs currently use bounded retry behavior with exponential backoff.
+News discovery jobs use bounded retry behavior with exponential backoff.
 
 ### `@genai-news/observability`
 
@@ -403,10 +590,11 @@ Provides:
 - tracing helpers
 - request/job correlation
 - discovery instrumentation
+- story-clustering instrumentation
 
 ### `@genai-news/shared`
 
-Shared deterministic news-domain logic.
+Shared deterministic news and story-domain logic.
 
 Provides:
 
@@ -418,6 +606,15 @@ Provides:
 - freshness policy
 - deduplication keys
 - deterministic article deduplication
+- story contracts
+- story invariants
+- story feature extraction
+- candidate generation
+- pairwise similarity signals
+- frozen story match threshold
+- story decision policy
+- story assignment policy
+- story identity policy
 
 This package contains pure application logic where possible and does not depend on infrastructure.
 
@@ -425,45 +622,44 @@ This package contains pure application logic where possible and does not depend 
 
 External capability integrations.
 
-Phase 1 currently provides:
+Provides:
 
 - GNews source adapter
 - RSS source adapter
 - typed source errors
 - provider-neutral source results
+- OpenAI semantic embedding client
 
-Future external integrations will continue to live behind tool boundaries.
+External integrations remain isolated behind reusable tool boundaries.
 
 ### `@genai-news/evals`
 
 Deterministic evaluation and regression infrastructure.
 
-Phase 1 provides:
+Provides:
 
-- fixed news evaluation corpus
-- expected normalization outcomes
-- canonical URL expectations
-- freshness expectations
-- deduplication expectations
-- final outcome expectations
-- aggregate metrics
-- regression policy
-- validation matrix
-- CLI baseline runner
+- Phase 1 fixed news evaluation corpus
+- Phase 1 regression evaluator
+- Phase 2 labelled story-clustering corpus
+- lexical similarity diagnostics
+- informative/distinctive-token diagnostics
+- semantic similarity analysis
+- frozen Phase 2 semantic snapshot
+- frozen Phase 2 release baseline
+- deterministic Phase 2 regression evaluator
+- combined Phase 1 + Phase 2 release gate
 
-The Phase 1 evaluation layer does not use an LLM judge, embeddings, live news APIs, Redis, or PostgreSQL.
+The Phase 2 release gate does not require a live OpenAI call. It evaluates the committed semantic snapshot deterministically.
 
 ### `@genai-news/agents`
 
-Reserved for the controlled multi-agent architecture introduced in later phases.
+Reserved for the controlled multi-agent architecture introduced in Phase 3 and later.
 
-Agents will be layered on top of the deterministic ingestion foundation rather than replacing it.
+Agents will be layered on top of the validated ingestion and canonical-story foundations rather than replacing them.
 
 ---
 
-## Failure Classification & Recovery
-
-Phase 1 explicitly validates failure behavior instead of treating all failures identically.
+## Failure Classification, Recovery & Concurrency
 
 Discovery failures are classified as either:
 
@@ -480,6 +676,7 @@ Examples of retryable failures include:
 - HTTP 429
 - HTTP 5xx
 - transient persistence failure
+- transient clustering failure
 - unknown infrastructure failure
 
 Examples of terminal failures include:
@@ -494,7 +691,14 @@ BullMQ retries retryable worker failures using bounded exponential backoff.
 
 Terminal failures are marked unrecoverable and are not repeatedly executed.
 
-The integration suite also verifies recovery after partial persistence without creating duplicate canonical article rows.
+Phase 2 extends recovery guarantees beyond article persistence:
+
+- retries after partial article persistence remain idempotent
+- retries after partial clustering remain idempotent
+- previously assigned articles short-circuit on replay
+- concurrent seed creation converges on one persisted winner
+- competing assignments cannot silently redirect an article to a different story
+- persistence conflicts remain explicit instead of weakening invariants
 
 ---
 
@@ -513,16 +717,25 @@ requestId
 jobId
 jobName
 sourceId
+storyId
+articleId
 failureReason
 retryable
 ```
 
-Discovery lifecycle events include events for:
+Discovery lifecycle events include:
 
 - discovery requested
 - enqueue failure
 - discovery completion
 - discovery failure
+
+Story-clustering lifecycle events include:
+
+- `story.clustering.already_assigned`
+- `story.clustering.assigned_existing_story`
+- `story.clustering.seeded_new_story`
+- `story.clustering.failed`
 
 ### Metrics
 
@@ -534,6 +747,23 @@ Prometheus metrics cover:
 - worker job duration
 - discovery stage counts
 - discovery stage duration
+- story clustering outcomes
+- candidate counts
+- semantic comparison counts
+- clustering duration
+- candidate-generation duration
+- semantic-comparison duration
+
+Story-clustering metrics include:
+
+```text
+genai_news_story_clustering_attempts_total
+genai_news_story_candidates_total
+genai_news_story_semantic_comparisons_total
+genai_news_story_clustering_duration_seconds
+genai_news_story_candidate_generation_duration_seconds
+genai_news_story_semantic_comparison_duration_seconds
+```
 
 Metric labels are intentionally kept low-cardinality.
 
@@ -545,11 +775,19 @@ GET /metrics
 
 ### Tracing
 
-OpenTelemetry instrumentation provides spans around API and worker orchestration.
+OpenTelemetry instrumentation provides spans around API, discovery, and story-clustering orchestration.
+
+Story-clustering spans include:
+
+```text
+story.cluster
+story.candidate_generation
+story.semantic_comparison
+```
 
 Worker failure spans record failure classification before the error propagates.
 
-The API enqueue operation and worker execution are currently separate trace boundaries.
+The API enqueue operation and worker execution remain separate trace boundaries.
 
 `jobId` provides cross-service correlation.
 
@@ -559,14 +797,9 @@ Distributed BullMQ trace-context propagation is not claimed in the current imple
 
 ## Evaluation
 
+### Phase 1 Regression Baseline
+
 Phase 1 includes a deterministic regression baseline for the news-processing pipeline.
-
-The baseline uses:
-
-- a fixed corpus
-- a fixed clock
-- a fixed freshness policy
-- deterministic expected outcomes
 
 It evaluates:
 
@@ -594,11 +827,68 @@ Final outcome:    100.00%
 REGRESSION: PASS
 ```
 
-This evaluation suite is intentionally separate from ordinary unit tests.
+### Phase 2 Story-Clustering Evaluation
 
-Unit tests verify individual behavior.
+Phase 2 uses a labelled story-clustering corpus containing same-story and different-story pairs, including difficult boundaries such as:
 
-The evaluation baseline verifies that the complete deterministic news-processing policy continues to produce the expected outcomes as the system evolves.
+- same company, different events
+- same person, different events
+- same keywords, different events
+- primary event vs related event
+- release vs integration
+- transitive bridge protection
+- ordering stability
+- incremental replay
+
+The frozen semantic v1 policy evaluates 21 labelled pairs:
+
+```text
+Same-story pairs:      9
+Different-story pairs: 12
+
+Threshold: 0.70
+
+TP: 9
+FP: 0
+TN: 12
+FN: 0
+
+Precision:        1.00
+Recall:           1.00
+False merge rate: 0.00
+False split rate: 0.00
+```
+
+### Phase 2 Release Gate
+
+Phase 2 has a deterministic combined release gate:
+
+```bash
+pnpm --filter @genai-news/evals phase2:release
+```
+
+Expected release result:
+
+```text
+Phase 2 Release Gate
+
+Phase 1
+  Corpus: phase1-baseline-v1
+  Cases: 17/17
+  Regression: PASS
+
+Phase 2
+  Baseline: phase2-release-v1
+  Corpus: phase2-story-clustering-v1
+  Model: text-embedding-3-small
+  Threshold: 0.7
+  Metrics: TP=9 FP=0 TN=12 FN=0
+  Regression: PASS
+
+PHASE 2 RELEASE GATE: PASS
+```
+
+The committed semantic snapshot is used for deterministic regression validation. Live OpenAI embedding calls are not required for normal release-gate execution.
 
 ---
 
@@ -615,13 +905,22 @@ Vitest tests cover:
 - canonical URLs
 - freshness
 - deduplication
+- story contracts and invariants
+- feature extraction
+- candidate generation
+- similarity signals
+- semantic threshold behavior
+- assignment policy
+- identity policy
 - source adapters
+- embedding client behavior
 - queue behavior
 - API behavior
 - worker behavior
 - observability
 - failure classification
 - evaluation infrastructure
+- release baseline and release gate
 
 ### Integration Tests
 
@@ -635,15 +934,29 @@ Validated flows include:
 - BullMQ → Worker
 - Worker → news pipeline
 - Worker → PostgreSQL
+- article persistence
+- story persistence
+- story retrieval
 - successful discovery
 - source retry and recovery
 - persistence retry and recovery
 - partial-persistence replay
-- idempotent persistence
+- transient clustering retry and recovery
+- same-article concurrency
+- competing story assignment
+- replay idempotency
 
-### Failure Validation
+Current key integration baselines:
 
-Phase 1 explicitly validates:
+```text
+Database integration: 25/25
+API integration:       8/8
+Worker integration:    23/23
+```
+
+### Failure & Concurrency Validation
+
+Phase 2 explicitly validates:
 
 - source network failures
 - source timeout behavior
@@ -651,10 +964,16 @@ Phase 1 explicitly validates:
 - terminal HTTP failures
 - malformed provider responses
 - queue unavailability
-- transient persistence failures
+- transient article-persistence failures
+- transient story-persistence failures
+- semantic comparison failures
 - retry behavior
 - partial persistence
+- partial clustering
 - replay idempotency
+- concurrent seed creation
+- competing concurrent assignment
+- BullMQ retry/replay behavior
 
 ---
 
@@ -670,12 +989,13 @@ API
  ├──────────────► PostgreSQL
  │
  └──────────────► Redis / BullMQ
-                        │
-                        ▼
-                     Worker
-                        │
-                        ▼
-                   News Sources
+                         │
+                         ▼
+                      Worker
+                         │
+                         ├──► News Sources
+                         │
+                         └──► OpenAI Embeddings
 ```
 
 Docker infrastructure supports:
@@ -725,69 +1045,68 @@ Container Validation
 Security / Dependency Checks
 ```
 
-CI provisions PostgreSQL and Redis for infrastructure-dependent integration tests.
+Phase 1 remains protected by its deterministic regression baseline.
 
-The Phase 1 baseline has been validated successfully on clean CI runners.
+Phase 2 adds its own deterministic release baseline and combined release gate.
 
 ---
 
 ## Technology Stack
 
-| Area                  | Technology              |
-| --------------------- | ----------------------- |
-| Monorepo              | pnpm workspaces         |
-| Language              | TypeScript              |
-| Runtime               | Node.js 24              |
-| Frontend              | Next.js                 |
-| API                   | Fastify                 |
-| Validation            | Zod                     |
-| Database              | PostgreSQL              |
-| ORM                   | Prisma                  |
-| Cache / Queue Backend | Redis                   |
-| Background Jobs       | BullMQ                  |
-| News Sources          | GNews, RSS              |
-| Logging               | Pino                    |
-| Metrics               | Prometheus              |
-| Telemetry             | OpenTelemetry           |
-| Testing               | Vitest                  |
-| Containers            | Docker / Docker Compose |
-| CI                    | GitHub Actions          |
+| Area                  | Technology                      |
+| --------------------- | ------------------------------- |
+| Monorepo              | pnpm workspaces                 |
+| Language              | TypeScript                      |
+| Runtime               | Node.js 24                      |
+| Frontend              | Next.js                         |
+| API                   | Fastify                         |
+| Validation            | Zod                             |
+| Database              | PostgreSQL                      |
+| ORM                   | Prisma                          |
+| Cache / Queue Backend | Redis                           |
+| Background Jobs       | BullMQ                          |
+| News Sources          | GNews, RSS                      |
+| Semantic Embeddings   | OpenAI `text-embedding-3-small` |
+| Logging               | Pino                            |
+| Metrics               | Prometheus                      |
+| Telemetry             | OpenTelemetry                   |
+| Testing               | Vitest                          |
+| Containers            | Docker / Docker Compose         |
+| CI                    | GitHub Actions                  |
 
 ---
 
-## Phase 1 Baseline
+## Phase 2 Release Baseline
 
-Phase 1 has been validated across:
+Phase 2 has been validated across:
 
 - formatting
 - linting
 - TypeScript compilation
-- unit tests
-- integration tests
+- package-scoped unit tests
+- database integration tests
+- API integration tests
+- worker integration tests
 - production builds
-- PostgreSQL migrations
-- Redis connectivity
-- BullMQ processing
-- GNews ingestion
-- RSS ingestion
-- article normalization
-- canonical URL processing
-- freshness filtering
-- deterministic deduplication
-- idempotent persistence
+- PostgreSQL story persistence
+- story membership provenance
+- semantic clustering
+- replay idempotency
+- concurrency safety
 - retry behavior
-- terminal failure behavior
-- source failure recovery
-- persistence failure recovery
 - partial-persistence recovery
-- queue-unavailable behavior
+- partial-clustering recovery
+- BullMQ retry/replay behavior
+- story API retrieval
+- frontend story inspection
 - structured logging
 - Prometheus metrics
 - OpenTelemetry tracing
-- deterministic regression evaluation
-- clean-runner GitHub Actions CI
+- Phase 1 regression protection
+- deterministic Phase 2 semantic regression
+- combined Phase 1 + Phase 2 release validation
 
-This forms the stable deterministic news-ingestion boundary for future AI capabilities.
+This forms the stable article-and-story boundary for future agentic capabilities.
 
 ---
 
@@ -799,13 +1118,16 @@ The project follows several architectural constraints:
 Behavior that does not require an LLM remains deterministic and independently testable.
 
 **Tools are separate from agents.**  
-External news integrations are implemented as reusable tools. Future agents may call those tools rather than embedding provider logic inside agent implementations.
+External news integrations and embedding capabilities are implemented as reusable tools. Future agents may call those tools rather than embedding provider logic inside agent implementations.
 
 **Agents do not own infrastructure.**  
-Queueing, persistence, normalization, observability, and source integration remain application capabilities outside the agent reasoning layer.
+Queueing, persistence, normalization, observability, source integration, deduplication, and story clustering remain application capabilities outside the agent reasoning layer.
 
 **Evaluation grows with capability.**  
-Deterministic behavior receives deterministic regression evaluation. AI-specific evaluation will be introduced when AI behavior exists.
+Deterministic behavior receives deterministic regression evaluation. Semantic behavior receives frozen reproducible evaluation. Agent-specific evaluation will be introduced when agentic behavior exists.
+
+**Conservative clustering over aggressive merging.**  
+When evidence is ambiguous, the system prefers a new story over an unsafe merge.
 
 **Human control remains part of the target architecture.**  
 Later content-generation and publishing capabilities will preserve explicit approval boundaries where appropriate.
@@ -815,30 +1137,29 @@ Later content-generation and publishing capabilities will preserve explicit appr
 ## Roadmap
 
 ```text
-Phase 0  Foundation & Infrastructure       ✅ Complete
-Phase 1  News Ingestion & Normalization    ✅ Complete
+Phase 0  Foundation & Infrastructure             ✅ Complete
+Phase 1  News Ingestion & Normalization          ✅ Complete
+Phase 2  Canonical Story Clustering              ✅ Complete
 
                 ↓
 
-        Future AI Phases
-
-Research
-   ↓
-Verification
-   ↓
-Ranking / Selection
-   ↓
-Content Generation
-   ↓
-Visual Generation
-   ↓
-Human Approval
-   ↓
-Publishing
+Phase 3  Research Agent / Agentic Research
+                ↓
+        Verification
+                ↓
+        Ranking / Selection
+                ↓
+        Content Generation
+                ↓
+        Visual Generation
+                ↓
+        Human Approval
+                ↓
+        Publishing
 ```
 
-Phase 1 intentionally stops at the deterministic news boundary.
+Phase 2 intentionally stops at the validated canonical-story boundary.
 
-The next development phase will build on this validated ingestion layer rather than modifying its core responsibilities.
+Phase 3 will introduce the first agentic capability on top of the stable article and story layers rather than modifying their core responsibilities.
 
-AI orchestration libraries such as LangChain/LangGraph will be introduced when agentic reasoning and orchestration require them, while the deterministic tools created in Phase 1 remain reusable application capabilities.
+LangChain/LangGraph will be introduced when agentic reasoning and orchestration require them, while deterministic tools and validated story infrastructure remain reusable application capabilities.

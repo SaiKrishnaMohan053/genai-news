@@ -99,7 +99,7 @@ describe('news story API integration', () => {
     try {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/news/stories?limit=10',
+        url: '/api/news/stories?limit=100',
       });
 
       expect(response.statusCode).toBe(200);
@@ -119,11 +119,15 @@ describe('news story API integration', () => {
         }>;
       }>();
 
-      expect(body.stories).toHaveLength(2);
+      const testStories = body.stories.filter((story) =>
+        ['story-api-newer', 'story-api-older'].includes(story.id),
+      );
 
-      expect(body.stories.map((story) => story.id)).toEqual(['story-api-newer', 'story-api-older']);
+      expect(testStories).toHaveLength(2);
 
-      expect(body.stories[0]).toMatchObject({
+      expect(testStories.map((story) => story.id)).toEqual(['story-api-newer', 'story-api-older']);
+
+      expect(testStories[0]).toMatchObject({
         id: 'story-api-newer',
         canonicalTitle: 'Newer story seed',
         seedArticleId: newerSeed.id,
@@ -134,7 +138,7 @@ describe('news story API integration', () => {
         membershipCount: 1,
       });
 
-      expect(body.stories[1]).toMatchObject({
+      expect(testStories[1]).toMatchObject({
         id: 'story-api-older',
         canonicalTitle: 'Older story seed',
         seedArticleId: olderSeed.id,

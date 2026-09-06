@@ -281,6 +281,172 @@ describe('incremental story clustering integration', () => {
     ).toBe(2);
   });
 
+  it('handles concurrent first-time matching of the same article without duplicate membership', async () => {
+    const seed = await persistArticle(
+      'concurrent-match-seed',
+      'OpenAI launches concurrent enterprise AI platform',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const incoming = await persistArticle(
+      'concurrent-match-incoming',
+      'OpenAI unveils concurrent enterprise AI platform',
+      new Date('2026-09-01T11:00:00.000Z'),
+    );
+
+    const embeddingClient = createDeterministicEmbeddingClient(
+      new Map([
+        [seed.title, [1, 0]],
+
+        [incoming.title, [0.8, 0.6]],
+      ]),
+    );
+
+    const service = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const seedResult = await service.clusterArticle(articleId(seed.id));
+
+    expect(seedResult.kind).toBe('seeded-new-story');
+
+    if (seedResult.kind !== 'seeded-new-story') {
+      throw new Error('Expected seed article to create a story.');
+    }
+
+    const results = await Promise.all([
+      service.clusterArticle(articleId(incoming.id)),
+
+      service.clusterArticle(articleId(incoming.id)),
+    ]);
+
+    expect(results.every((result) => result.storyId === seedResult.storyId)).toBe(true);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: incoming.id,
+        },
+      }),
+    ).toBe(1);
+
+    const membership = await database.storyMembership.findUnique({
+      where: {
+        articleId: incoming.id,
+      },
+    });
+
+    expect(membership).toMatchObject({
+      storyId: seedResult.storyId,
+
+      articleId: incoming.id,
+
+      kind: 'MATCHED',
+
+      matchedAgainstArticleId: seed.id,
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    expect(
+      results.filter((result) => result.kind === 'assigned-existing-story' && result.persisted),
+    ).toHaveLength(1);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          storyId: seedResult.storyId,
+        },
+      }),
+    ).toBe(2);
+  });
+
+  it('handles concurrent first-time clustering of the same seed article without duplicate state', async () => {
+    const article = await persistArticle(
+      'concurrent-first-seed',
+      'Concurrent first seed article',
+      new Date('2026-09-01T13:00:00.000Z'),
+    );
+
+    const embeddingClient = createDeterministicEmbeddingClient(new Map([[article.title, [1, 0]]]));
+
+    const service = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const results = await Promise.all([
+      service.clusterArticle(articleId(article.id)),
+
+      service.clusterArticle(articleId(article.id)),
+    ]);
+
+    expect(results.every((result) => result.articleId === article.id)).toBe(true);
+
+    const membership = await database.storyMembership.findUnique({
+      where: {
+        articleId: article.id,
+      },
+    });
+
+    expect(membership).not.toBeNull();
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: article.id,
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    expect(new Set(results.map((result) => result.storyId)).size).toBe(1);
+
+    expect(
+      results.filter((result) => result.kind === 'seeded-new-story' && result.persisted),
+    ).toHaveLength(1);
+
+    expect(membership?.storyId).toBe(results[0]?.storyId);
+  });
+
   it('seeds conservatively when two existing stories both match', async () => {
     const seedA = await persistArticle(
       'ambiguous-a',
@@ -373,9 +539,211 @@ describe('incremental story clustering integration', () => {
     ).toBe(3);
   });
 
-  it('returns already assigned without running semantic comparison again', async () => {
+  it('keeps story identity and database cardinality stable across repeated replay', async () => {
     const article = await persistArticle(
-      'replay',
+      'repeated-replay',
+      'Repeated replay stability article',
+      new Date('2026-09-01T12:00:00.000Z'),
+    );
+
+    const embeddingClient = createDeterministicEmbeddingClient(new Map([[article.title, [1, 0]]]));
+
+    const embedSpy = vi.spyOn(embeddingClient, 'embed');
+
+    const service = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const first = await service.clusterArticle(articleId(article.id));
+
+    expect(first.kind).toBe('seeded-new-story');
+
+    if (first.kind !== 'seeded-new-story') {
+      throw new Error('Expected first clustering attempt to seed a story.');
+    }
+
+    const embeddingCallsAfterFirst = embedSpy.mock.calls.length;
+
+    const replayResults = await Promise.all([
+      service.clusterArticle(articleId(article.id)),
+
+      service.clusterArticle(articleId(article.id)),
+
+      service.clusterArticle(articleId(article.id)),
+
+      service.clusterArticle(articleId(article.id)),
+    ]);
+
+    for (const replay of replayResults) {
+      expect(replay).toEqual({
+        kind: 'already-assigned',
+
+        articleId: article.id,
+
+        storyId: first.storyId,
+      });
+    }
+
+    expect(embedSpy.mock.calls.length).toBe(embeddingCallsAfterFirst);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          article: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    const membership = await database.storyMembership.findUnique({
+      where: {
+        articleId: article.id,
+      },
+    });
+
+    expect(membership?.storyId).toBe(first.storyId);
+  });
+
+  it('replays an existing-story assignment without changing membership state', async () => {
+    const seed = await persistArticle(
+      'matched-replay-seed',
+      'OpenAI launches enterprise AI platform',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const incoming = await persistArticle(
+      'matched-replay-incoming',
+      'OpenAI unveils enterprise AI platform',
+      new Date('2026-09-01T11:00:00.000Z'),
+    );
+
+    const embeddingClient = createDeterministicEmbeddingClient(
+      new Map([
+        [seed.title, [1, 0]],
+
+        [incoming.title, [0.8, 0.6]],
+      ]),
+    );
+
+    const embedSpy = vi.spyOn(embeddingClient, 'embed');
+
+    const service = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const seedResult = await service.clusterArticle(articleId(seed.id));
+
+    expect(seedResult.kind).toBe('seeded-new-story');
+
+    if (seedResult.kind !== 'seeded-new-story') {
+      throw new Error('Expected seed article to create a story.');
+    }
+
+    const firstAssignment = await service.clusterArticle(articleId(incoming.id));
+
+    expect(firstAssignment).toMatchObject({
+      kind: 'assigned-existing-story',
+
+      articleId: incoming.id,
+
+      storyId: seedResult.storyId,
+
+      representativeArticleId: seed.id,
+
+      semanticSimilarity: 0.8,
+
+      persisted: true,
+    });
+
+    const membershipBeforeReplay = await database.storyMembership.findUnique({
+      where: {
+        articleId: incoming.id,
+      },
+    });
+
+    expect(membershipBeforeReplay).not.toBeNull();
+
+    const embeddingCallsBeforeReplay = embedSpy.mock.calls.length;
+
+    const replay = await service.clusterArticle(articleId(incoming.id));
+
+    expect(replay).toEqual({
+      kind: 'already-assigned',
+
+      articleId: incoming.id,
+
+      storyId: seedResult.storyId,
+    });
+
+    expect(embedSpy.mock.calls.length).toBe(embeddingCallsBeforeReplay);
+
+    const membershipAfterReplay = await database.storyMembership.findUnique({
+      where: {
+        articleId: incoming.id,
+      },
+    });
+
+    expect(membershipAfterReplay).toEqual(membershipBeforeReplay);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          article: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(2);
+  });
+
+  it('replays a seeded article idempotently without creating duplicate story state', async () => {
+    const article = await persistArticle(
+      'replay-seed',
       'Replay clustering article',
       new Date('2026-09-01T10:00:00.000Z'),
     );
@@ -400,13 +768,227 @@ describe('incremental story clustering integration', () => {
 
     expect(first.kind).toBe('seeded-new-story');
 
-    const callsAfterFirst = embedSpy.mock.calls.length;
+    if (first.kind !== 'seeded-new-story') {
+      throw new Error('Expected seeded-new-story result.');
+    }
+
+    expect(first.persisted).toBe(true);
+
+    const embeddingCallsAfterFirst = embedSpy.mock.calls.length;
 
     const second = await service.clusterArticle(articleId(article.id));
 
-    expect(second.kind).toBe('already-assigned');
+    expect(second).toEqual({
+      kind: 'already-assigned',
 
-    expect(embedSpy.mock.calls.length).toBe(callsAfterFirst);
+      articleId: article.id,
+
+      storyId: first.storyId,
+    });
+
+    /**
+     * Replay must stop at the membership boundary.
+     *
+     * No semantic work should be recomputed.
+     */
+    expect(embedSpy.mock.calls.length).toBe(embeddingCallsAfterFirst);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticle: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          article: {
+            canonicalUrl: {
+              startsWith: testUrlPrefix,
+            },
+          },
+        },
+      }),
+    ).toBe(1);
+
+    const membership = await database.storyMembership.findUnique({
+      where: {
+        articleId: article.id,
+      },
+    });
+
+    expect(membership).toMatchObject({
+      storyId: first.storyId,
+
+      articleId: article.id,
+
+      kind: 'SEED',
+
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+  });
+
+  it('allows only one winner when concurrent clustering attempts assign the same article to different stories', async () => {
+    const seedA = await persistArticle(
+      'competing-seed-a',
+      'Company launches AI platform Alpha',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const seedB = await persistArticle(
+      'competing-seed-b',
+      'Company launches AI platform Beta',
+      new Date('2026-09-01T10:10:00.000Z'),
+    );
+
+    const incoming = await persistArticle(
+      'competing-incoming',
+      'Company launches new AI platform',
+      new Date('2026-09-01T10:20:00.000Z'),
+    );
+
+    const seedAService = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: createDeterministicEmbeddingClient(
+        new Map([
+          [seedA.title, [1, 0]],
+          [seedB.title, [0, 1]],
+        ]),
+      ),
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const seedAResult = await seedAService.clusterArticle(articleId(seedA.id));
+
+    expect(seedAResult.kind).toBe('seeded-new-story');
+
+    if (seedAResult.kind !== 'seeded-new-story') {
+      throw new Error('Expected seed A to create a story.');
+    }
+
+    const seedBService = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: createDeterministicEmbeddingClient(
+        new Map([
+          [seedA.title, [1, 0]],
+          [seedB.title, [0, 1]],
+        ]),
+      ),
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const seedBResult = await seedBService.clusterArticle(articleId(seedB.id));
+
+    expect(seedBResult.kind).toBe('seeded-new-story');
+
+    if (seedBResult.kind !== 'seeded-new-story') {
+      throw new Error('Expected seed B to create a story.');
+    }
+
+    const serviceForA = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: createDeterministicEmbeddingClient(
+        new Map([
+          [seedA.title, [1, 0]],
+          [seedB.title, [0, 1]],
+          [incoming.title, [1, 0]],
+        ]),
+      ),
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const serviceForB = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: createDeterministicEmbeddingClient(
+        new Map([
+          [seedA.title, [0, 1]],
+          [seedB.title, [1, 0]],
+          [incoming.title, [1, 0]],
+        ]),
+      ),
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const results = await Promise.allSettled([
+      serviceForA.clusterArticle(articleId(incoming.id)),
+
+      serviceForB.clusterArticle(articleId(incoming.id)),
+    ]);
+
+    const fulfilled = results.filter(
+      (
+        result,
+      ): result is PromiseFulfilledResult<Awaited<ReturnType<typeof serviceForA.clusterArticle>>> =>
+        result.status === 'fulfilled',
+    );
+
+    const rejected = results.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+
+    expect(fulfilled).toHaveLength(1);
+
+    expect(rejected).toHaveLength(1);
+
+    const membership = await database.storyMembership.findUnique({
+      where: {
+        articleId: incoming.id,
+      },
+    });
+
+    expect(membership).not.toBeNull();
+
+    expect([seedAResult.storyId, seedBResult.storyId]).toContain(membership?.storyId);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: incoming.id,
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          storyId: {
+            in: [seedAResult.storyId, seedBResult.storyId],
+          },
+
+          articleId: incoming.id,
+        },
+      }),
+    ).toBe(1);
   });
 
   it('excludes temporally distant stories before semantic embedding', async () => {
@@ -461,6 +1043,72 @@ describe('incremental story clustering integration', () => {
      * the temporally excluded old story.
      */
     expect(embedSpy.mock.calls.length).toBe(callsBeforeIncoming);
+  });
+
+  it('does not persist story state when semantic comparison fails', async () => {
+    const seed = await persistArticle(
+      'semantic-failure-seed',
+      'OpenAI launches semantic failure platform',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const incoming = await persistArticle(
+      'semantic-failure-incoming',
+      'OpenAI unveils semantic failure platform',
+      new Date('2026-09-01T11:00:00.000Z'),
+    );
+
+    const seedService = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: createDeterministicEmbeddingClient(new Map([[seed.title, [1, 0]]])),
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    const seedResult = await seedService.clusterArticle(articleId(seed.id));
+
+    expect(seedResult.kind).toBe('seeded-new-story');
+
+    const failingEmbeddingClient: SemanticEmbeddingClient = {
+      async embed() {
+        throw new Error('semantic comparison unavailable');
+      },
+    };
+
+    const failingService = createProductionStoryClusteringService({
+      database,
+
+      embeddingClient: failingEmbeddingClient,
+
+      candidatePolicy: {
+        maxTimeDistanceMs: 24 * 60 * 60 * 1000,
+        includeWhenTimeUnknown: false,
+      },
+    });
+
+    await expect(failingService.clusterArticle(articleId(incoming.id))).rejects.toThrow(
+      'semantic comparison unavailable',
+    );
+
+    expect(
+      await database.storyMembership.findUnique({
+        where: {
+          articleId: incoming.id,
+        },
+      }),
+    ).toBeNull();
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticleId: incoming.id,
+        },
+      }),
+    ).toBe(0);
   });
 });
 

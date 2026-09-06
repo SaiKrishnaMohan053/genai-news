@@ -10,3 +10,5 @@ export * from './distinctive-token-analysis.js';
 export * from './semantic-embedding-client.js';
 export * from './semantic-similarity-analysis.js';
 export * from './semantic-threshold-analysis.js';
+export * from './baselines/phase2-release-baseline.js';
+export * from './phase2-release-regression.js';

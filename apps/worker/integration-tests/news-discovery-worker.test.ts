@@ -584,6 +584,11 @@ describe('news discovery worker integration', () => {
 
       expect(await job.getState()).toBe('completed');
 
+      const completedJob = await queue.getJob(job.id!);
+
+      expect(completedJob).not.toBeNull();
+
+      expect(completedJob?.attemptsMade).toBe(2);
       await job.remove();
     } finally {
       await worker.close();
@@ -719,6 +724,14 @@ describe('news discovery worker integration', () => {
       expect(memberships.filter((membership) => membership.kind === 'SEED')).toHaveLength(1);
 
       expect(memberships.filter((membership) => membership.kind === 'MATCHED')).toHaveLength(1);
+
+      expect(await job.getState()).toBe('completed');
+
+      const completedJob = await queue.getJob(job.id!);
+
+      expect(completedJob).not.toBeNull();
+
+      expect(completedJob?.attemptsMade).toBe(2);
 
       await job.remove();
     } finally {

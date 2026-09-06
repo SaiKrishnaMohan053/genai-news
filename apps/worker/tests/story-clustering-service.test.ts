@@ -765,4 +765,100 @@ describe('incremental story clustering service', () => {
       'story.clustering.failed',
     );
   });
+
+  it('does not seed a story when matched membership persistence fails', async () => {
+    const dependencies = createDependencies();
+
+    vi.mocked(dependencies.candidateProvider.findCandidates).mockResolvedValue([
+      {
+        storyId: storyId('story-existing'),
+
+        representativeArticle: {
+          id: articleId('rep-a'),
+
+          title: 'Company unveils AI platform',
+
+          publishedAt: new Date('2026-09-01T09:30:00.000Z'),
+        },
+      },
+    ]);
+
+    vi.mocked(dependencies.semanticSimilarity.compareAgainstCandidates).mockResolvedValue([
+      {
+        articleId: articleId('rep-a'),
+
+        similarity: 0.9,
+      },
+    ]);
+
+    vi.mocked(dependencies.persistence.addMatchedMembership).mockRejectedValue(
+      new Error('matched persistence failed'),
+    );
+
+    const service = createStoryClusteringService(dependencies);
+
+    await expect(service.clusterArticle(articleId('article-a'))).rejects.toThrow(
+      'matched persistence failed',
+    );
+
+    expect(dependencies.persistence.addMatchedMembership).toHaveBeenCalledTimes(1);
+
+    expect(dependencies.persistence.createSeedStory).not.toHaveBeenCalled();
+
+    expect(dependencies.storyIdFactory.createStoryId).not.toHaveBeenCalled();
+  });
+
+  it('propagates seed persistence failure without reporting a successful assignment', async () => {
+    const dependencies = createDependencies();
+
+    vi.mocked(dependencies.persistence.createSeedStory).mockRejectedValue(
+      new Error('seed persistence failed'),
+    );
+
+    const service = createStoryClusteringService(dependencies);
+
+    await expect(service.clusterArticle(articleId('article-a'))).rejects.toThrow(
+      'seed persistence failed',
+    );
+
+    expect(dependencies.persistence.createSeedStory).toHaveBeenCalledTimes(1);
+
+    expect(dependencies.persistence.addMatchedMembership).not.toHaveBeenCalled();
+  });
+
+  it('retries cleanly after a transient seed persistence failure', async () => {
+    const dependencies = createDependencies();
+
+    vi.mocked(dependencies.persistence.createSeedStory)
+      .mockRejectedValueOnce(new Error('transient seed persistence failure'))
+      .mockImplementationOnce(async (input) => ({
+        story: {
+          id: input.storyId,
+        },
+
+        created: true,
+      }));
+
+    const service = createStoryClusteringService(dependencies);
+
+    await expect(service.clusterArticle(articleId('article-a'))).rejects.toThrow(
+      'transient seed persistence failure',
+    );
+
+    const retry = await service.clusterArticle(articleId('article-a'));
+
+    expect(retry).toEqual({
+      kind: 'seeded-new-story',
+
+      articleId: 'article-a',
+
+      storyId: 'story-generated',
+
+      reason: 'no-candidates',
+
+      persisted: true,
+    });
+
+    expect(dependencies.persistence.createSeedStory).toHaveBeenCalledTimes(2);
+  });
 });

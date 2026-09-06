@@ -661,6 +661,68 @@ describe('story repository integration', () => {
       }),
     ).toBe(1);
   });
+
+  it('reconciles concurrent seed creation when callers generated different story ids', async () => {
+    const seed = await persistArticle(
+      'concurrent-different-seed-ids',
+      'Concurrent different seed ids',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    const results = await Promise.all([
+      repository.createSeedStory({
+        storyId: storyId('story-concurrent-generated-a'),
+
+        seedArticleId: articleId(seed.id),
+
+        canonicalTitle: seed.title,
+
+        clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+      }),
+
+      repository.createSeedStory({
+        storyId: storyId('story-concurrent-generated-b'),
+
+        seedArticleId: articleId(seed.id),
+
+        canonicalTitle: seed.title,
+
+        clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+      }),
+    ]);
+
+    expect(results.map((result) => result.created).sort()).toEqual([false, true]);
+
+    expect(new Set(results.map((result) => result.story.id)).size).toBe(1);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: seed.id,
+        },
+      }),
+    ).toBe(1);
+
+    expect(
+      await database.story.count({
+        where: {
+          seedArticleId: seed.id,
+        },
+      }),
+    ).toBe(1);
+
+    const membership = await repository.findMembershipByArticleId(articleId(seed.id));
+
+    expect(membership).not.toBeNull();
+
+    expect(results.map((result) => result.story.id)).toEqual([
+      membership?.storyId,
+      membership?.storyId,
+    ]);
+  });
+
   it('creates the same seed story concurrently without duplicate state', async () => {
     const seed = await persistArticle(
       'concurrent-seed',

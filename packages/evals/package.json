@@ -15,7 +15,10 @@
     "test": "vitest run --config vitest.config.ts",
     "news:baseline": "node dist/news/run-phase1-baseline.js",
     "phase2:signals": "node dist/news/story-clustering/run-phase2-signal-analysis.js",
-    "phase2:semantic": "node dist/news/story-clustering/run-phase2-semantic-analysis.js"
+    "phase2:semantic": "node dist/news/story-clustering/run-phase2-semantic-analysis.js",
+    "phase2:semantic:snapshot": "node dist/news/story-clustering/run-phase2-semantic-snapshot.js",
+    "phase2:regression": "node dist/news/story-clustering/run-phase2-release-regression.js",
+    "phase2:release": "node dist/news/run-phase2-release-gate.js"
   },
   "dependencies": {
     "@genai-news/shared": "workspace:*"

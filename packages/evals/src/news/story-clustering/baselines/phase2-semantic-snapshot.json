@@ -1,0 +1,154 @@
+{
+  "id": "phase2-semantic-snapshot-v1",
+  "corpusId": "phase2-story-clustering-v1",
+  "model": "text-embedding-3-small",
+  "pairs": [
+    {
+      "scenarioId": "same-event-multiple-publishers",
+      "leftArticleId": "launch-a",
+      "rightArticleId": "launch-b",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.9612596698126078
+    },
+    {
+      "scenarioId": "same-event-multiple-publishers",
+      "leftArticleId": "launch-a",
+      "rightArticleId": "launch-c",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.8453712585852343
+    },
+    {
+      "scenarioId": "same-event-multiple-publishers",
+      "leftArticleId": "launch-b",
+      "rightArticleId": "launch-c",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.8325554391135136
+    },
+    {
+      "scenarioId": "same-event-time-variation",
+      "leftArticleId": "acquisition-a",
+      "rightArticleId": "acquisition-b",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.8569538750437123
+    },
+    {
+      "scenarioId": "same-company-different-events",
+      "leftArticleId": "company-launch",
+      "rightArticleId": "company-earnings",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6025584145362265
+    },
+    {
+      "scenarioId": "same-person-different-events",
+      "leftArticleId": "person-keynote",
+      "rightArticleId": "person-board",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.5819076163897473
+    },
+    {
+      "scenarioId": "same-keywords-different-events",
+      "leftArticleId": "keyword-a",
+      "rightArticleId": "keyword-b",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6820018176302818
+    },
+    {
+      "scenarioId": "difficult-primary-event-vs-related-event",
+      "leftArticleId": "primary-launch",
+      "rightArticleId": "supplier-prep",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6599796263271241
+    },
+    {
+      "scenarioId": "difficult-release-vs-integration",
+      "leftArticleId": "model-release",
+      "rightArticleId": "partner-integration",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6415239975167656
+    },
+    {
+      "scenarioId": "transitive-bridge-protection",
+      "leftArticleId": "bridge-a",
+      "rightArticleId": "bridge-b",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.7129146048450659
+    },
+    {
+      "scenarioId": "transitive-bridge-protection",
+      "leftArticleId": "bridge-a",
+      "rightArticleId": "bridge-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.5608848656272563
+    },
+    {
+      "scenarioId": "transitive-bridge-protection",
+      "leftArticleId": "bridge-b",
+      "rightArticleId": "bridge-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6627662246943956
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-a",
+      "rightArticleId": "order-b",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.9398104943477267
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-a",
+      "rightArticleId": "order-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6481525054739777
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-a",
+      "rightArticleId": "order-d",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.8390029422198378
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-b",
+      "rightArticleId": "order-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.6441851824387066
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-b",
+      "rightArticleId": "order-d",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.8328127083559015
+    },
+    {
+      "scenarioId": "ordering-stability",
+      "leftArticleId": "order-c",
+      "rightArticleId": "order-d",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.603307614417498
+    },
+    {
+      "scenarioId": "incremental-replay",
+      "leftArticleId": "incremental-a",
+      "rightArticleId": "incremental-b",
+      "expectedSameStory": true,
+      "semanticCosineSimilarity": 0.9250229767426137
+    },
+    {
+      "scenarioId": "incremental-replay",
+      "leftArticleId": "incremental-a",
+      "rightArticleId": "incremental-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.563900814999887
+    },
+    {
+      "scenarioId": "incremental-replay",
+      "leftArticleId": "incremental-b",
+      "rightArticleId": "incremental-c",
+      "expectedSameStory": false,
+      "semanticCosineSimilarity": 0.5518361393523827
+    }
+  ]
+}

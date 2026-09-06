@@ -458,9 +458,11 @@ export function createStoryClusteringService(dependencies: StoryClusteringDepend
               clusteringVersion: identity.clusteringVersion,
             });
 
+            const resolvedStoryId = persisted.story.id as StoryId;
+
             span.setAttribute('story.assignment.outcome', 'seeded_new_story');
 
-            span.setAttribute('story.id', identity.storyId);
+            span.setAttribute('story.id', resolvedStoryId);
 
             span.setAttribute('story.seed.reason', assignment.reason);
 
@@ -479,7 +481,7 @@ export function createStoryClusteringService(dependencies: StoryClusteringDepend
                 attributes: {
                   articleId,
 
-                  storyId: identity.storyId,
+                  storyId: resolvedStoryId,
 
                   reason: assignment.reason,
 
@@ -497,7 +499,7 @@ export function createStoryClusteringService(dependencies: StoryClusteringDepend
 
               articleId,
 
-              storyId: identity.storyId,
+              storyId: resolvedStoryId,
 
               reason: assignment.reason,
 

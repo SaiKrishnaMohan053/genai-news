@@ -741,6 +741,32 @@ async function recoverConcurrentSeedStory(
    * already belongs to another story.
    */
   if (membership !== null) {
+    const winningStory = await database.story.findUnique({
+      where: {
+        id: membership.storyId,
+      },
+    });
+
+    const compatibleConcurrentWinner =
+      winningStory !== null &&
+      membership.kind === 'SEED' &&
+      membership.articleId === input.seedArticleId &&
+      membership.clusteringVersion === input.clusteringVersion &&
+      winningStory.seedArticleId === input.seedArticleId &&
+      winningStory.representativeArticleId === input.seedArticleId &&
+      winningStory.canonicalTitle === input.canonicalTitle &&
+      winningStory.clusteringVersion === input.clusteringVersion;
+
+    if (compatibleConcurrentWinner) {
+      return {
+        story: mapStory(winningStory),
+
+        membership: mapRequiredMembership(membership),
+
+        created: false,
+      };
+    }
+
     throw new StoryPersistenceConflictError(
       [
         'Seed article already belongs to another story.',
