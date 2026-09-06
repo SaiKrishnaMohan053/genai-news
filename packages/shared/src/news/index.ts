@@ -6,3 +6,4 @@ export * from './normalization/index.js';
 export * from './schemas.js';
 export * from './source-article.js';
 export * from './story/index.js';
+export * from './research/index.js';
