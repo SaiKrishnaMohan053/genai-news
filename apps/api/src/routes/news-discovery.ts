@@ -17,16 +17,17 @@ import {
 
 import { AppError } from '../errors/app-error.js';
 
-const discoveryRequestSchema = z.object({
-  sourceId: z.literal('gnews'),
+const discoveryRequestBaseSchema = z.object({
+  sourceId: z.string().trim().min(1),
   limit: z.number().int().positive().max(100),
 });
 
-interface NewsDiscoveryRouteOptions {
+export interface NewsDiscoveryRouteOptions {
   queue?: NewsDiscoveryQueue;
   metrics?: NewsDiscoveryMetrics;
   now?: () => Date;
   createJobId?: () => string;
+  supportedSourceIds?: readonly string[];
 }
 
 export const newsDiscoveryRoutes: FastifyPluginAsync<NewsDiscoveryRouteOptions> = async (
@@ -35,14 +36,19 @@ export const newsDiscoveryRoutes: FastifyPluginAsync<NewsDiscoveryRouteOptions> 
 ) => {
   app.post('/api/news/discover', async (request, reply) => {
     const queue = options.queue;
+    const supportedSourceIds = new Set(options.supportedSourceIds ?? ['gnews']);
 
     if (!queue) {
       throw new AppError('News discovery queue is unavailable', 503, 'NEWS_DISCOVERY_UNAVAILABLE');
     }
 
-    const parsed = discoveryRequestSchema.safeParse(request.body);
+    const parsed = discoveryRequestBaseSchema.safeParse(request.body);
 
     if (!parsed.success) {
+      throw new AppError('Invalid news discovery request', 400, 'INVALID_DISCOVERY_REQUEST');
+    }
+
+    if (!supportedSourceIds.has(parsed.data.sourceId)) {
       throw new AppError('Invalid news discovery request', 400, 'INVALID_DISCOVERY_REQUEST');
     }
 

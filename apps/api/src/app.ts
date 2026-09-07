@@ -21,6 +21,7 @@ export interface BuildAppOptions {
 
   newsDiscoveryQueue?: NewsDiscoveryQueue;
   newsDiscoveryMetrics?: NewsDiscoveryMetrics;
+  supportedNewsSourceIds?: readonly string[];
 
   now?: () => Date;
   createJobId?: () => string;
@@ -89,6 +90,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ...(options.createJobId
       ? {
           createJobId: options.createJobId,
+        }
+      : {}),
+
+    ...(options.supportedNewsSourceIds
+      ? {
+          supportedSourceIds: options.supportedNewsSourceIds,
         }
       : {}),
   });

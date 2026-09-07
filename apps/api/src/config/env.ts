@@ -1,3 +1,4 @@
+import { rssSourceConfigsJsonSchema } from '@genai-news/schemas';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -12,6 +13,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   REDIS_URL: z.string().url(),
+
+  NEWS_RSS_SOURCES_JSON: rssSourceConfigsJsonSchema,
 
   OTEL_ENABLED: z
     .enum(['true', 'false'])

@@ -24,6 +24,7 @@ const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
 const newsDiscoveryQueue = createNewsDiscoveryQueue(redis);
+const supportedNewsSourceIds = ['gnews', ...env.NEWS_RSS_SOURCES_JSON.map((source) => source.id)];
 
 const app = buildApp({
   logger,
@@ -32,6 +33,7 @@ const app = buildApp({
   metricsRegistry,
   newsDiscoveryQueue,
   newsDiscoveryMetrics,
+  supportedNewsSourceIds,
 });
 
 async function start(): Promise<void> {

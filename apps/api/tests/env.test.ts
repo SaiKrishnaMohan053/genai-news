@@ -18,8 +18,45 @@ describe('environment configuration', () => {
       LOG_LEVEL: 'info',
       DATABASE_URL: 'postgresql://genai_news:genai_news_dev@localhost:5432/genai_news',
       REDIS_URL: 'redis://localhost:6379',
+      NEWS_RSS_SOURCES_JSON: [],
       OTEL_ENABLED: false,
     });
+  });
+
+  it('parses configured RSS sources', () => {
+    const env = loadEnv({
+      ...baseEnv,
+      NEWS_RSS_SOURCES_JSON: JSON.stringify([
+        {
+          id: 'rss-openai',
+          name: 'OpenAI News',
+          feedUrl: 'https://example.com/feed.xml',
+        },
+      ]),
+    });
+
+    expect(env.NEWS_RSS_SOURCES_JSON).toEqual([
+      {
+        id: 'rss-openai',
+        name: 'OpenAI News',
+        feedUrl: 'https://example.com/feed.xml',
+      },
+    ]);
+  });
+
+  it('rejects invalid RSS source configuration', () => {
+    expect(() =>
+      loadEnv({
+        ...baseEnv,
+        NEWS_RSS_SOURCES_JSON: JSON.stringify([
+          {
+            id: 'gnews',
+            name: 'Invalid',
+            feedUrl: 'https://example.com/feed.xml',
+          },
+        ]),
+      }),
+    ).toThrow('Invalid environment configuration');
   });
 
   it('parses a valid API port', () => {

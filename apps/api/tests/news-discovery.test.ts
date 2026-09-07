@@ -275,4 +275,36 @@ describe('news discovery route', () => {
       await app.close();
     }
   });
+
+  it('accepts a configured RSS source and enqueues discovery', async () => {
+    const queue = createQueueMock();
+
+    const app = buildApp({
+      logger: false,
+      newsDiscoveryQueue: queue,
+      supportedNewsSourceIds: ['gnews', 'rss-openai'],
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/news/discover',
+      payload: {
+        sourceId: 'rss-openai',
+        limit: 10,
+      },
+    });
+
+    expect(response.statusCode).toBe(202);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sourceId: 'rss-openai',
+        limit: 10,
+      }),
+      expect.anything(),
+    );
+
+    await app.close();
+  });
 });

@@ -40,6 +40,7 @@ const semanticEmbeddingClient = createOpenAiSemanticEmbeddingClient({
 
 const sourceRegistry = createNewsSourceRegistry({
   gnewsApiKey: env.GNEWS_API_KEY,
+  rssSources: env.NEWS_RSS_SOURCES_JSON,
 });
 
 const freshnessPolicy = {

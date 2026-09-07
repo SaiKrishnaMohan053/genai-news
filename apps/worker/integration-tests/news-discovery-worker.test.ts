@@ -11,14 +11,14 @@ import {
   NEWS_DISCOVERY_QUEUE_NAME,
 } from '@genai-news/queue';
 import { GNewsError } from '@genai-news/tools';
+import type { SemanticEmbeddingClient } from '@genai-news/tools';
+
+import { createNewsSourceRegistry, type NewsSourceRegistry } from '../src/news/source-registry.js';
 import type { NewsSource, NewsSourceResult, StoryArticleId } from '@genai-news/shared';
 import { QueueEvents } from 'bullmq';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createNewsDiscoveryWorker } from '../src/news-worker.js';
-import type { NewsSourceRegistry } from '../src/news/source-registry.js';
-
-import type { SemanticEmbeddingClient } from '@genai-news/tools';
 
 import { createProductionStoryClusteringService } from '../src/news/story-clustering/index.js';
 
@@ -127,6 +127,197 @@ describe('news discovery worker integration', () => {
     workerRedis.disconnect();
 
     await database.$disconnect();
+  });
+
+  it('processes a configured RSS source through the production source registry', async () => {
+    const rssFetch = vi.fn<typeof fetch>();
+
+    rssFetch.mockResolvedValue(
+      new Response(
+        `<?xml version="1.0" encoding="UTF-8"?>
+      <rss version="2.0">
+        <channel>
+          <title>Test RSS Publisher</title>
+          <link>https://example.com</link>
+          <description>Integration test feed</description>
+
+          <item>
+            <guid>rss-fresh-1</guid>
+            <title>RSS fresh article</title>
+            <link>https://example.com/rss-fresh?utm_source=rss-test</link>
+            <pubDate>Thu, 27 Aug 2026 15:00:00 GMT</pubDate>
+            <description>Fresh RSS article summary.</description>
+          </item>
+        </channel>
+      </rss>`,
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/rss+xml',
+          },
+        },
+      ),
+    );
+
+    const rssSourceRegistry = createNewsSourceRegistry({
+      gnewsApiKey: 'integration-test-key',
+      rssSources: [
+        {
+          id: 'rss-test',
+          name: 'Test RSS',
+          feedUrl: 'https://example.com/feed.xml',
+        },
+      ],
+      rssFetchImpl: rssFetch,
+    });
+
+    const articleRepository = createArticleRepository(database);
+
+    const worker = createNewsDiscoveryWorker({
+      connection: workerRedis,
+      sourceRegistry: rssSourceRegistry,
+      articleRepository,
+      storyClusterer: createStoryClusterer(),
+
+      freshnessPolicy: {
+        maxAgeMs: 24 * 60 * 60 * 1000,
+        maxFutureSkewMs: 5 * 60 * 1000,
+        missingPublishedAt: 'reject',
+      },
+
+      now: () => new Date('2026-08-27T16:00:00.000Z'),
+    });
+
+    try {
+      await worker.waitUntilReady();
+
+      const job = await enqueueNewsDiscovery(
+        queue,
+        {
+          sourceId: 'rss-test',
+          limit: 10,
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+        `news-rss-integration-${Date.now()}`,
+      );
+
+      const result = await job.waitUntilFinished(queueEvents, 10_000);
+
+      expect(result).toMatchObject({
+        sourceId: 'rss-test',
+
+        fetchedCount: 1,
+
+        normalizedCount: 1,
+        normalizationRejectedCount: 0,
+
+        freshCount: 1,
+        freshnessRejectedCount: 0,
+
+        uniqueCount: 1,
+        duplicateCount: 0,
+
+        persistedCount: 1,
+
+        clusteredCount: 1,
+      });
+
+      expect(rssFetch).toHaveBeenCalledTimes(1);
+
+      expect(await countWorkerIntegrationArticles(database)).toBe(1);
+
+      const persisted = await database.article.findUnique({
+        where: {
+          canonicalUrl: 'https://example.com/rss-fresh',
+        },
+      });
+
+      expect(persisted).not.toBeNull();
+
+      expect(persisted?.title).toBe('RSS fresh article');
+
+      expect(persisted?.sourceId).toBe('rss-test');
+
+      expect(persisted?.sourceType).toBe('rss');
+
+      await job.remove();
+    } finally {
+      await worker.close();
+    }
+  });
+
+  it('does not retry an invalid RSS feed payload', async () => {
+    const rssFetch = vi.fn<typeof fetch>();
+
+    rssFetch.mockResolvedValue(
+      new Response('<rss><channel><item>', {
+        status: 200,
+        headers: {
+          'content-type': 'application/rss+xml',
+        },
+      }),
+    );
+
+    const rssSourceRegistry = createNewsSourceRegistry({
+      gnewsApiKey: 'integration-test-key',
+      rssSources: [
+        {
+          id: 'rss-invalid',
+          name: 'Invalid RSS',
+          feedUrl: 'https://example.com/invalid-feed.xml',
+        },
+      ],
+      rssFetchImpl: rssFetch,
+    });
+
+    const articleRepository = createArticleRepository(database);
+
+    const worker = createNewsDiscoveryWorker({
+      connection: workerRedis,
+      sourceRegistry: rssSourceRegistry,
+      articleRepository,
+      storyClusterer: createStoryClusterer(),
+
+      freshnessPolicy: {
+        maxAgeMs: 24 * 60 * 60 * 1000,
+        maxFutureSkewMs: 5 * 60 * 1000,
+        missingPublishedAt: 'reject',
+      },
+
+      now: () => new Date('2026-08-27T16:00:00.000Z'),
+    });
+
+    try {
+      await worker.waitUntilReady();
+
+      const job = await enqueueNewsDiscovery(
+        queue,
+        {
+          sourceId: 'rss-invalid',
+          limit: 10,
+          requestedAt: '2026-08-27T15:58:00.000Z',
+        },
+        `news-rss-invalid-${Date.now()}`,
+      );
+
+      await expect(job.waitUntilFinished(queueEvents, 10_000)).rejects.toThrow();
+
+      expect(rssFetch).toHaveBeenCalledTimes(1);
+
+      expect(await job.getState()).toBe('failed');
+
+      expect(await countWorkerIntegrationArticles(database)).toBe(0);
+
+      const failedJob = await queue.getJob(job.id!);
+
+      expect(failedJob).not.toBeNull();
+
+      expect(failedJob?.attemptsMade).toBe(1);
+
+      await job.remove();
+    } finally {
+      await worker.close();
+    }
   });
 
   it('processes a discovery job end to end and persists articles', async () => {

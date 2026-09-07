@@ -27,6 +27,8 @@ describe('worker environment configuration', () => {
 
       GNEWS_API_KEY: 'test-gnews-api-key',
 
+      NEWS_RSS_SOURCES_JSON: [],
+
       NEWS_FRESHNESS_HOURS: 24,
 
       NEWS_MAX_FUTURE_SKEW_MINUTES: 5,
@@ -49,6 +51,37 @@ describe('worker environment configuration', () => {
     });
   });
 
+  it('parses configured RSS sources', () => {
+    const env = loadWorkerEnv({
+      ...validDiscoveryEnv,
+
+      NEWS_RSS_SOURCES_JSON: JSON.stringify([
+        {
+          id: 'rss-openai',
+          name: 'OpenAI News',
+          feedUrl: 'https://example.com/feed.xml',
+        },
+      ]),
+    });
+
+    expect(env.NEWS_RSS_SOURCES_JSON).toEqual([
+      {
+        id: 'rss-openai',
+        name: 'OpenAI News',
+        feedUrl: 'https://example.com/feed.xml',
+      },
+    ]);
+  });
+
+  it('rejects invalid RSS source configuration', () => {
+    expect(() =>
+      loadWorkerEnv({
+        ...validDiscoveryEnv,
+
+        NEWS_RSS_SOURCES_JSON: '{invalid-json',
+      }),
+    ).toThrow('Invalid worker environment configuration');
+  });
   it('accepts a valid discovery and clustering configuration', () => {
     const env = loadWorkerEnv({
       ...validDiscoveryEnv,
