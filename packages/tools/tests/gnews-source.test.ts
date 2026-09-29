@@ -261,3 +261,187 @@ describe('GNewsSource', () => {
     expect(result.articles[1]?.summary).toBeUndefined();
   });
 });
+
+describe('GNewsSource search', () => {
+  it('searches GNews with a bounded focused query', async () => {
+    const fixture = await loadFixture();
+
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return Response.json(fixture);
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    const result = await source.search({
+      query: 'OpenAI announcement',
+      limit: 5,
+    });
+
+    expect(result.articles).toHaveLength(2);
+    expect(result.totalArticles).toBe(2);
+    expect(result.truncated).toBe(false);
+
+    const [url, init] = fetchImpl.mock.calls[0]!;
+
+    const requestUrl = new URL(String(url));
+
+    expect(requestUrl.pathname).toBe('/api/v4/search');
+    expect(requestUrl.searchParams.get('q')).toBe('OpenAI announcement');
+    expect(requestUrl.searchParams.get('max')).toBe('5');
+    expect(requestUrl.searchParams.get('sortby')).toBe('relevance');
+
+    expect(init?.headers).toEqual({
+      Accept: 'application/json',
+      'X-Api-Key': 'test-api-key',
+    });
+
+    expect(String(url)).not.toContain('test-api-key');
+  });
+
+  it('trims a search query before sending it', async () => {
+    const fixture = await loadFixture();
+
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return Response.json(fixture);
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await source.search({
+      query: '  AI regulation  ',
+      limit: 5,
+    });
+
+    const [url] = fetchImpl.mock.calls[0]!;
+
+    expect(new URL(String(url)).searchParams.get('q')).toBe('AI regulation');
+  });
+
+  it('rejects a blank search query before provider dispatch', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await expect(
+      source.search({
+        query: '   ',
+        limit: 5,
+      }),
+    ).rejects.toThrow('GNews search query must not be empty.');
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('rejects search queries longer than the provider bound', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await expect(
+      source.search({
+        query: 'x'.repeat(201),
+        limit: 5,
+      }),
+    ).rejects.toThrow('GNews search query must not exceed 200 characters.');
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-positive search limit', async () => {
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+    });
+
+    await expect(
+      source.search({
+        query: 'AI',
+        limit: 0,
+      }),
+    ).rejects.toThrow('GNews search limit must be a positive integer.');
+  });
+
+  it('caps search results at the provider maximum', async () => {
+    const fixture = await loadFixture();
+
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return Response.json(fixture);
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await source.search({
+      query: 'AI',
+      limit: 500,
+    });
+
+    const [url] = fetchImpl.mock.calls[0]!;
+
+    expect(new URL(String(url)).searchParams.get('max')).toBe('100');
+  });
+
+  it('marks search results truncated when more matches exist', async () => {
+    const fixture = (await loadFixture()) as {
+      articles: unknown[];
+    };
+
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return Response.json({
+        ...fixture,
+        totalArticles: 25,
+      });
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    const result = await source.search({
+      query: 'AI',
+      limit: 5,
+    });
+
+    expect(result.articles).toHaveLength(2);
+    expect(result.totalArticles).toBe(25);
+    expect(result.truncated).toBe(true);
+  });
+
+  it('uses the same safe provider error handling as top headlines', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return new Response(null, {
+        status: 429,
+      });
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await expect(
+      source.search({
+        query: 'AI',
+        limit: 5,
+      }),
+    ).rejects.toMatchObject({
+      name: 'GNewsError',
+      kind: 'http',
+      statusCode: 429,
+    });
+  });
+});

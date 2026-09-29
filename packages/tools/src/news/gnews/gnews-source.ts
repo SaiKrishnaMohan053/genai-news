@@ -6,7 +6,7 @@ import {
 } from '@genai-news/shared';
 
 import { GNewsError } from './gnews-error.js';
-import { gnewsTopHeadlinesResponseSchema, type GNewsArticle } from './gnews-schema.js';
+import { gnewsArticlesResponseSchema, type GNewsArticle } from './gnews-schema.js';
 
 const DEFAULT_BASE_URL = 'https://gnews.io/api/v4';
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -21,6 +21,18 @@ export type GNewsSourceOptions = {
   fetchImpl?: FetchLike;
 };
 
+export type GNewsSearchInput = Readonly<{
+  query: string;
+  limit: number;
+}>;
+
+export type GNewsSearchResult = Readonly<{
+  fetchedAt: Date;
+  totalArticles: number;
+  articles: SourceArticle[];
+  truncated: boolean;
+}>;
+
 export class GNewsSource implements NewsSource {
   readonly id = 'gnews';
   readonly name = 'GNews';
@@ -30,38 +42,10 @@ export class GNewsSource implements NewsSource {
   private readonly timeoutMs: number;
   private readonly baseUrl: string;
   private readonly fetchImpl: FetchLike;
-
-  constructor(options: GNewsSourceOptions) {
-    const apiKey = options.apiKey.trim();
-
-    if (!apiKey) {
-      throw new Error('GNews API key must not be empty.');
-    }
-
-    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-
-    if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
-      throw new Error('GNews timeout must be a positive integer.');
-    }
-
-    this.apiKey = apiKey;
-    this.timeoutMs = timeoutMs;
-    this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-    this.fetchImpl = options.fetchImpl ?? fetch;
-  }
-
-  async fetchLatest(input: { limit: number }): Promise<NewsSourceResult> {
-    if (!Number.isInteger(input.limit) || input.limit <= 0) {
-      throw new Error('GNews fetch limit must be a positive integer.');
-    }
-
-    const limit = Math.min(input.limit, GNEWS_MAX_RESULTS);
-
-    const url = new URL(`${this.baseUrl}/top-headlines`);
-
-    url.searchParams.set('category', 'general');
-    url.searchParams.set('max', String(limit));
-
+  private async requestArticles(url: URL): Promise<{
+    totalArticles: number;
+    articles: GNewsArticle[];
+  }> {
     let response: Response;
 
     try {
@@ -99,7 +83,7 @@ export class GNewsSource implements NewsSource {
 
     const body = await readJson(response);
 
-    const parsed = gnewsTopHeadlinesResponseSchema.safeParse(body);
+    const parsed = gnewsArticlesResponseSchema.safeParse(body);
 
     if (!parsed.success) {
       throw new GNewsError({
@@ -109,7 +93,41 @@ export class GNewsSource implements NewsSource {
       });
     }
 
-    const articles = parsed.data.articles.map(mapGNewsArticle);
+    return parsed.data;
+  }
+
+  constructor(options: GNewsSourceOptions) {
+    const apiKey = options.apiKey.trim();
+
+    if (!apiKey) {
+      throw new Error('GNews API key must not be empty.');
+    }
+
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
+    if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+      throw new Error('GNews timeout must be a positive integer.');
+    }
+
+    this.apiKey = apiKey;
+    this.timeoutMs = timeoutMs;
+    this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+    this.fetchImpl = options.fetchImpl ?? fetch;
+  }
+
+  async fetchLatest(input: { limit: number }): Promise<NewsSourceResult> {
+    if (!Number.isInteger(input.limit) || input.limit <= 0) {
+      throw new Error('GNews fetch limit must be a positive integer.');
+    }
+
+    const limit = Math.min(input.limit, GNEWS_MAX_RESULTS);
+
+    const url = new URL(`${this.baseUrl}/top-headlines`);
+
+    url.searchParams.set('category', 'general');
+    url.searchParams.set('max', String(limit));
+
+    const parsed = await this.requestArticles(url);
 
     return {
       source: {
@@ -118,7 +136,40 @@ export class GNewsSource implements NewsSource {
         type: this.type,
       },
       fetchedAt: new Date(),
-      articles,
+      articles: parsed.articles.map(mapGNewsArticle),
+    };
+  }
+
+  async search(input: GNewsSearchInput): Promise<GNewsSearchResult> {
+    const query = input.query.trim();
+
+    if (!query) {
+      throw new Error('GNews search query must not be empty.');
+    }
+
+    if (query.length > 200) {
+      throw new Error('GNews search query must not exceed 200 characters.');
+    }
+
+    if (!Number.isInteger(input.limit) || input.limit <= 0) {
+      throw new Error('GNews search limit must be a positive integer.');
+    }
+
+    const limit = Math.min(input.limit, GNEWS_MAX_RESULTS);
+
+    const url = new URL(`${this.baseUrl}/search`);
+
+    url.searchParams.set('q', query);
+    url.searchParams.set('max', String(limit));
+    url.searchParams.set('sortby', 'relevance');
+
+    const parsed = await this.requestArticles(url);
+
+    return {
+      fetchedAt: new Date(),
+      totalArticles: parsed.totalArticles,
+      articles: parsed.articles.map(mapGNewsArticle),
+      truncated: parsed.totalArticles > parsed.articles.length,
     };
   }
 }

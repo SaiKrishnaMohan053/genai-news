@@ -18,11 +18,15 @@ export const gnewsArticleSchema = z.object({
   }),
 });
 
-export const gnewsTopHeadlinesResponseSchema = z.object({
+export const gnewsArticlesResponseSchema = z.object({
   totalArticles: z.number().int().nonnegative(),
   articles: z.array(gnewsArticleSchema),
 });
 
+export const gnewsTopHeadlinesResponseSchema = gnewsArticlesResponseSchema;
+
 export type GNewsArticle = z.infer<typeof gnewsArticleSchema>;
 
-export type GNewsTopHeadlinesResponse = z.infer<typeof gnewsTopHeadlinesResponseSchema>;
+export type GNewsArticlesResponse = z.infer<typeof gnewsArticlesResponseSchema>;
+
+export type GNewsTopHeadlinesResponse = GNewsArticlesResponse;
