@@ -1,6 +1,16 @@
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
+
 import { ChatOpenAI } from '@langchain/openai';
-import type { RunnableConfig } from '@langchain/core/runnables';
+
+import type { createResearchTools } from './tools.js';
+
+import { researchAgentSelectionSchema, type ResearchAgentSelection } from '@genai-news/shared';
+
 import { parseResearchModelConfig, type ResearchModelConfig } from './model-config.js';
+
+import type { BaseMessage } from '@langchain/core/messages';
+import type { AIMessage } from '@langchain/core/messages';
 
 export function createResearchModel(config: ResearchModelConfig, apiKey: string): ChatOpenAI {
   const validated = parseResearchModelConfig(config);
@@ -27,6 +37,21 @@ export function createResearchModel(config: ResearchModelConfig, apiKey: string)
   });
 }
 
+export type ResearchStructuredOutputModel = Runnable<
+  BaseLanguageModelInput,
+  ResearchAgentSelection
+>;
+
+export function createResearchStructuredOutputModel(
+  model: ChatOpenAI,
+): ResearchStructuredOutputModel {
+  return model.withStructuredOutput(researchAgentSelectionSchema, {
+    name: 'research_agent_selection',
+    method: 'jsonSchema',
+    strict: true,
+  });
+}
+
 export function createResearchModelCallOptions(
   config: ResearchModelConfig,
   signal?: AbortSignal,
@@ -37,4 +62,21 @@ export function createResearchModelCallOptions(
     timeout: validated.timeoutMs,
     ...(signal === undefined ? {} : { signal }),
   };
+}
+
+export type ResearchToolCallingModel = Runnable<readonly BaseMessage[], AIMessage>;
+
+type ResearchTool = ReturnType<typeof createResearchTools>[keyof ReturnType<
+  typeof createResearchTools
+>];
+
+export function createResearchToolCallingModel(
+  model: ChatOpenAI,
+  tools: readonly ResearchTool[],
+): ResearchToolCallingModel {
+  return model.bindTools([...tools], {
+    strict: true,
+    tool_choice: 'auto',
+    parallel_tool_calls: false,
+  }) as ResearchToolCallingModel;
 }

@@ -13,11 +13,7 @@ const DEFAULT_MAX_REDIRECTS = 5;
 const DEFAULT_MAX_RESPONSE_BYTES = 1_000_000;
 const DEFAULT_MAX_TEXT_LENGTH = 16_000;
 
-const SUPPORTED_CONTENT_TYPES = new Set([
-  'text/html',
-  'text/plain',
-  'application/xhtml+xml',
-]);
+const SUPPORTED_CONTENT_TYPES = new Set(['text/html', 'text/plain', 'application/xhtml+xml']);
 
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 
@@ -82,10 +78,7 @@ export async function fetchResearchArticle(
   sourceUrl: string,
   options: FetchResearchArticleOptions = {},
 ): Promise<FetchedResearchArticle> {
-  const timeoutMs = requirePositiveInteger(
-    options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    'timeoutMs',
-  );
+  const timeoutMs = requirePositiveInteger(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, 'timeoutMs');
   const maxRedirects = requireNonnegativeInteger(
     options.maxRedirects ?? DEFAULT_MAX_REDIRECTS,
     'maxRedirects',
@@ -194,9 +187,7 @@ export async function fetchResearchArticle(
       }).decode(response.body);
 
       const extracted =
-        contentType === 'text/plain'
-          ? normalizeWhitespace(decoded)
-          : extractHtmlText(decoded);
+        contentType === 'text/plain' ? normalizeWhitespace(decoded) : extractHtmlText(decoded);
 
       if (extracted.length === 0) {
         throw new ResearchArticleFetchError('unsupported-content');
@@ -274,10 +265,7 @@ export class NodePinnedArticleTransport implements ResearchArticleTransport {
 
           const contentLength = readContentLength(headers['content-length']);
 
-          if (
-            contentLength !== null &&
-            contentLength > input.maxResponseBytes
-          ) {
+          if (contentLength !== null && contentLength > input.maxResponseBytes) {
             response.destroy();
             reject(new ResearchArticleFetchError('response-too-large'));
             return;
@@ -287,15 +275,12 @@ export class NodePinnedArticleTransport implements ResearchArticleTransport {
           let receivedBytes = 0;
 
           response.on('data', (chunk: Buffer | string) => {
-            const buffer =
-              typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+            const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
 
             receivedBytes += buffer.byteLength;
 
             if (receivedBytes > input.maxResponseBytes) {
-              response.destroy(
-                new ResearchArticleFetchError('response-too-large'),
-              );
+              response.destroy(new ResearchArticleFetchError('response-too-large'));
               return;
             }
 

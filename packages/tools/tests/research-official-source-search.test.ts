@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  ResearchSource,
-  ResearchToolExecution,
-} from '@genai-news/shared';
+import type { ResearchSource, ResearchToolExecution } from '@genai-news/shared';
 
 import {
   GNewsError,
@@ -76,24 +73,22 @@ function registrar(): RegisterObservedResearchSources {
       candidates: readonly ResearchObservedSearchCandidate[];
       execution: ResearchToolExecution;
     }>): Promise<readonly ResearchSource[]> =>
-      candidates.map(
-        (candidate: ResearchObservedSearchCandidate, index: number) => ({
-          sourceId: `source-${index + 1}`,
-          url: candidate.url,
-          canonicalUrl: candidate.canonicalUrl,
-          title: candidate.title,
-          publisherName: candidate.publisherName,
-          publishedAt: candidate.publishedAt,
-          observedAt: new Date('2026-09-29T19:00:00.000Z'),
-          provenance: [
-            {
-              kind: 'tool-result' as const,
-              toolCallId: execution.toolCallId,
-              toolName: execution.toolName,
-            },
-          ],
-        }),
-      ),
+      candidates.map((candidate: ResearchObservedSearchCandidate, index: number) => ({
+        sourceId: `source-${index + 1}`,
+        url: candidate.url,
+        canonicalUrl: candidate.canonicalUrl,
+        title: candidate.title,
+        publisherName: candidate.publisherName,
+        publishedAt: candidate.publishedAt,
+        observedAt: new Date('2026-09-29T19:00:00.000Z'),
+        provenance: [
+          {
+            kind: 'tool-result' as const,
+            toolCallId: execution.toolCallId,
+            toolName: execution.toolName,
+          },
+        ],
+      })),
   );
 }
 
@@ -248,25 +243,24 @@ describe('official-source research search capability', () => {
   });
 
   it('rejects inconsistent registration output', async () => {
-    const registerObservedSources =
-      vi.fn<RegisterObservedResearchSources>().mockResolvedValue([
-        {
-          sourceId: 'source-1',
-          url: 'https://wrong.example.com/',
-          canonicalUrl: 'https://wrong.example.com/',
-          title: 'Wrong',
-          publisherName: null,
-          publishedAt: null,
-          observedAt: new Date(),
-          provenance: [
-            {
-              kind: 'tool-result',
-              toolCallId: 'call-1',
-              toolName: 'search_official_source',
-            },
-          ],
-        },
-      ]);
+    const registerObservedSources = vi.fn<RegisterObservedResearchSources>().mockResolvedValue([
+      {
+        sourceId: 'source-1',
+        url: 'https://wrong.example.com/',
+        canonicalUrl: 'https://wrong.example.com/',
+        title: 'Wrong',
+        publisherName: null,
+        publishedAt: null,
+        observedAt: new Date(),
+        provenance: [
+          {
+            kind: 'tool-result',
+            toolCallId: 'call-1',
+            toolName: 'search_official_source',
+          },
+        ],
+      },
+    ]);
 
     const capability = createOfficialSourceSearchCapability({
       search: searchProvider(),
@@ -290,15 +284,14 @@ describe('official-source research search capability', () => {
   });
 
   it('rejects duplicate source IDs returned by registration', async () => {
-    const registerObservedSources: RegisterObservedResearchSources =
-  vi.fn(
-    async ({
-      candidates,
-    }: Readonly<{
-      candidates: readonly ResearchObservedSearchCandidate[];
-      execution: ResearchToolExecution;
-    }>): Promise<readonly ResearchSource[]> =>
-      candidates.map((candidate: ResearchObservedSearchCandidate) => ({
+    const registerObservedSources: RegisterObservedResearchSources = vi.fn(
+      async ({
+        candidates,
+      }: Readonly<{
+        candidates: readonly ResearchObservedSearchCandidate[];
+        execution: ResearchToolExecution;
+      }>): Promise<readonly ResearchSource[]> =>
+        candidates.map((candidate: ResearchObservedSearchCandidate) => ({
           sourceId: 'same-source',
           url: candidate.url,
           canonicalUrl: candidate.canonicalUrl,
@@ -314,7 +307,7 @@ describe('official-source research search capability', () => {
             },
           ],
         })),
-      );
+    );
 
     const capability = createOfficialSourceSearchCapability({
       search: searchProvider(),
@@ -373,14 +366,12 @@ describe('official-source research search capability', () => {
   });
 
   it('maps provider timeout safely', async () => {
-    const search = vi
-      .fn<ResearchSearchProvider>()
-      .mockRejectedValue(
-        new GNewsError({
-          kind: 'timeout',
-          message: 'secret provider detail',
-        }),
-      );
+    const search = vi.fn<ResearchSearchProvider>().mockRejectedValue(
+      new GNewsError({
+        kind: 'timeout',
+        message: 'secret provider detail',
+      }),
+    );
 
     const capability = createOfficialSourceSearchCapability({
       search,
@@ -404,15 +395,13 @@ describe('official-source research search capability', () => {
   });
 
   it('maps HTTP 429 to rate-limited', async () => {
-    const search = vi
-      .fn<ResearchSearchProvider>()
-      .mockRejectedValue(
-        new GNewsError({
-          kind: 'http',
-          statusCode: 429,
-          message: 'provider detail',
-        }),
-      );
+    const search = vi.fn<ResearchSearchProvider>().mockRejectedValue(
+      new GNewsError({
+        kind: 'http',
+        statusCode: 429,
+        message: 'provider detail',
+      }),
+    );
 
     const capability = createOfficialSourceSearchCapability({
       search,

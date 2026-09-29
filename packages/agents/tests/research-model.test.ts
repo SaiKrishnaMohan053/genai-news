@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadResearchModelConfig, parseResearchModelConfig } from '../src/research/model-config.js';
-import { createResearchModel, createResearchModelCallOptions } from '../src/research/model.js';
+import {
+  createResearchModel,
+  createResearchModelCallOptions,
+  createResearchStructuredOutputModel,
+} from '../src/research/model.js';
 
 const config = loadResearchModelConfig({});
 
@@ -154,6 +158,165 @@ describe('research model foundation', () => {
 
     await expect(
       model.invoke('test', createResearchModelCallOptions(config, controller.signal)),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('research structured output model', () => {
+  it('constructs structured output without making a request', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const model = createResearchModel(config, 'test-key');
+
+    createResearchStructuredOutputModel(model);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('requests strict JSON-schema structured output', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
+        created: 1,
+        model: 'gpt-4.1-mini-2025-04-14',
+        choices: [
+          {
+            index: 0,
+            finish_reason: 'stop',
+            message: {
+              role: 'assistant',
+              content: JSON.stringify({
+                sourceIds: ['source-1'],
+                primarySourceCandidateIds: ['source-1'],
+                unresolvedQuestions: [],
+                completionSuggestion: 'coverage-sufficient',
+              }),
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 10,
+          total_tokens: 20,
+        },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const model = createResearchStructuredOutputModel(createResearchModel(config, 'test-key'));
+
+    const result = await model.invoke(
+      'Return the final research selection.',
+      createResearchModelCallOptions(config),
+    );
+
+    expect(result).toEqual({
+      sourceIds: ['source-1'],
+      primarySourceCandidateIds: ['source-1'],
+      unresolvedQuestions: [],
+      completionSuggestion: 'coverage-sufficient',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const call = fetchMock.mock.calls[0];
+
+    if (!call) {
+      throw new Error('Expected a request');
+    }
+
+    const request = new Request(call[0], call[1]);
+    const requestBody = (await request.json()) as {
+      response_format?: {
+        type?: string;
+        json_schema?: {
+          name?: string;
+          strict?: boolean;
+          schema?: unknown;
+        };
+      };
+    };
+
+    expect(requestBody.response_format).toMatchObject({
+      type: 'json_schema',
+      json_schema: {
+        name: 'research_agent_selection',
+        strict: true,
+      },
+    });
+
+    expect(requestBody.response_format?.json_schema?.schema).toBeDefined();
+  });
+
+  it('rejects structured output that violates the shared schema', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
+        created: 1,
+        model: 'gpt-4.1-mini-2025-04-14',
+        choices: [
+          {
+            index: 0,
+            finish_reason: 'stop',
+            message: {
+              role: 'assistant',
+              content: JSON.stringify({
+                sourceIds: ['source-1'],
+                primarySourceCandidateIds: [],
+                unresolvedQuestions: [],
+                completionSuggestion: 'not-a-valid-value',
+              }),
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 10,
+          total_tokens: 20,
+        },
+      }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const model = createResearchStructuredOutputModel(createResearchModel(config, 'test-key'));
+
+    await expect(
+      model.invoke('Return the final research selection.', createResearchModelCallOptions(config)),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps cancellation on the structured model call', async () => {
+    const controller = new AbortController();
+
+    const fetchMock = vi.fn(
+      async (_input: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), {
+            once: true,
+          });
+
+          controller.abort(new Error('structured selection cancelled'));
+        }),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const model = createResearchStructuredOutputModel(createResearchModel(config, 'test-key'));
+
+    await expect(
+      model.invoke(
+        'Return the final research selection.',
+        createResearchModelCallOptions(config, controller.signal),
+      ),
     ).rejects.toThrow();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

@@ -1,7 +1,4 @@
-import type {
-  ResearchSource,
-  ResearchToolExecution,
-} from '@genai-news/shared';
+import type { ResearchSource, ResearchToolExecution } from '@genai-news/shared';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -87,29 +84,22 @@ function registrar(): RegisterObservedResearchSources {
       candidates: readonly ResearchObservedSearchCandidate[];
       execution: ResearchToolExecution;
     }>): Promise<readonly ResearchSource[]> =>
-      candidates.map(
-        (
-          candidate: ResearchObservedSearchCandidate,
-          index: number,
-        ) => ({
-          sourceId: `related-source-${index + 1}`,
-          url: candidate.url,
-          canonicalUrl: candidate.canonicalUrl,
-          title: candidate.title,
-          publisherName: candidate.publisherName,
-          publishedAt: candidate.publishedAt,
-          observedAt: new Date(
-            '2026-09-29T19:00:00.000Z',
-          ),
-          provenance: [
-            {
-              kind: 'tool-result' as const,
-              toolCallId: execution.toolCallId,
-              toolName: execution.toolName,
-            },
-          ],
-        }),
-      ),
+      candidates.map((candidate: ResearchObservedSearchCandidate, index: number) => ({
+        sourceId: `related-source-${index + 1}`,
+        url: candidate.url,
+        canonicalUrl: candidate.canonicalUrl,
+        title: candidate.title,
+        publisherName: candidate.publisherName,
+        publishedAt: candidate.publishedAt,
+        observedAt: new Date('2026-09-29T19:00:00.000Z'),
+        provenance: [
+          {
+            kind: 'tool-result' as const,
+            toolCallId: execution.toolCallId,
+            toolName: execution.toolName,
+          },
+        ],
+      })),
   );
 }
 
@@ -120,9 +110,7 @@ describe('related-source research search capability', () => {
     const capability = createRelatedSourceSearchCapability({
       search,
       registerObservedSources: registrar(),
-      getKnownCanonicalUrls: () => [
-        'https://known.example.com/story',
-      ],
+      getKnownCanonicalUrls: () => ['https://known.example.com/story'],
       limit: 5,
     });
 
@@ -145,9 +133,7 @@ describe('related-source research search capability', () => {
     const capability = createRelatedSourceSearchCapability({
       search: searchProvider(),
       registerObservedSources,
-      getKnownCanonicalUrls: () => [
-        'https://known.example.com/story',
-      ],
+      getKnownCanonicalUrls: () => ['https://known.example.com/story'],
     });
 
     const result = await capability(
@@ -157,8 +143,7 @@ describe('related-source research search capability', () => {
       execution,
     );
 
-    const call =
-      vi.mocked(registerObservedSources).mock.calls[0]?.[0];
+    const call = vi.mocked(registerObservedSources).mock.calls[0]?.[0];
 
     expect(call?.candidates).toEqual([
       {
@@ -166,9 +151,7 @@ describe('related-source research search capability', () => {
         canonicalUrl: 'https://new.example.com/report',
         title: 'Additional coverage',
         publisherName: 'New News',
-        publishedAt: new Date(
-          '2026-09-29T18:30:00.000Z',
-        ),
+        publishedAt: new Date('2026-09-29T18:30:00.000Z'),
         excerpt: 'Additional source excerpt.',
       },
       {
@@ -204,17 +187,13 @@ describe('related-source research search capability', () => {
       execution,
     );
 
-    const candidates =
-      vi.mocked(registerObservedSources).mock.calls[0]?.[0]
-        .candidates;
+    const candidates = vi.mocked(registerObservedSources).mock.calls[0]?.[0].candidates;
 
     expect(candidates).toHaveLength(3);
 
     expect(
       candidates?.filter(
-        (candidate) =>
-          candidate.canonicalUrl ===
-          'https://new.example.com/report',
+        (candidate) => candidate.canonicalUrl === 'https://new.example.com/report',
       ),
     ).toHaveLength(1);
   });
@@ -223,9 +202,7 @@ describe('related-source research search capability', () => {
     const capability = createRelatedSourceSearchCapability({
       search: searchProvider(),
       registerObservedSources: registrar(),
-      getKnownCanonicalUrls: () => [
-        'https://known.example.com/story',
-      ],
+      getKnownCanonicalUrls: () => ['https://known.example.com/story'],
     });
 
     expect(
@@ -259,33 +236,30 @@ describe('related-source research search capability', () => {
   });
 
   it('returns empty success when every provider result is already known', async () => {
-    const search =
-      vi.fn<ResearchSearchProvider>().mockResolvedValue({
-        fetchedAt: new Date(),
-        totalArticles: 2,
-        articles: [
-          {
-            title: 'Known one',
-            url: 'https://known.example.com/story?utm_source=a',
-            metadata: {},
-          },
-          {
-            title: 'Known two',
-            url: 'https://known.example.com/story?utm_source=b',
-            metadata: {},
-          },
-        ],
-        truncated: false,
-      });
+    const search = vi.fn<ResearchSearchProvider>().mockResolvedValue({
+      fetchedAt: new Date(),
+      totalArticles: 2,
+      articles: [
+        {
+          title: 'Known one',
+          url: 'https://known.example.com/story?utm_source=a',
+          metadata: {},
+        },
+        {
+          title: 'Known two',
+          url: 'https://known.example.com/story?utm_source=b',
+          metadata: {},
+        },
+      ],
+      truncated: false,
+    });
 
     const registerObservedSources = registrar();
 
     const capability = createRelatedSourceSearchCapability({
       search,
       registerObservedSources,
-      getKnownCanonicalUrls: () => [
-        'https://known.example.com/story',
-      ],
+      getKnownCanonicalUrls: () => ['https://known.example.com/story'],
     });
 
     expect(
@@ -310,19 +284,18 @@ describe('related-source research search capability', () => {
 
     const registerObservedSources = registrar();
 
-    const search =
-      vi.fn<ResearchSearchProvider>().mockResolvedValue({
-        fetchedAt: new Date(),
-        totalArticles: 1,
-        articles: [
-          {
-            title: 'Candidate',
-            url: 'https://candidate.example.com/story',
-            metadata: {},
-          },
-        ],
-        truncated: false,
-      });
+    const search = vi.fn<ResearchSearchProvider>().mockResolvedValue({
+      fetchedAt: new Date(),
+      totalArticles: 1,
+      articles: [
+        {
+          title: 'Candidate',
+          url: 'https://candidate.example.com/story',
+          metadata: {},
+        },
+      ],
+      truncated: false,
+    });
 
     const capability = createRelatedSourceSearchCapability({
       search,
@@ -392,32 +365,29 @@ describe('related-source research search capability', () => {
   });
 
   it('rejects inconsistent registration output', async () => {
-    const registerObservedSources =
-      vi.fn<RegisterObservedResearchSources>().mockResolvedValue([
-        {
-          sourceId: 'wrong-source',
-          url: 'https://wrong.example.com/',
-          canonicalUrl: 'https://wrong.example.com/',
-          title: 'Wrong',
-          publisherName: null,
-          publishedAt: null,
-          observedAt: new Date(),
-          provenance: [
-            {
-              kind: 'tool-result',
-              toolCallId: 'call-related-1',
-              toolName: 'find_related_sources',
-            },
-          ],
-        },
-      ]);
+    const registerObservedSources = vi.fn<RegisterObservedResearchSources>().mockResolvedValue([
+      {
+        sourceId: 'wrong-source',
+        url: 'https://wrong.example.com/',
+        canonicalUrl: 'https://wrong.example.com/',
+        title: 'Wrong',
+        publisherName: null,
+        publishedAt: null,
+        observedAt: new Date(),
+        provenance: [
+          {
+            kind: 'tool-result',
+            toolCallId: 'call-related-1',
+            toolName: 'find_related_sources',
+          },
+        ],
+      },
+    ]);
 
     const capability = createRelatedSourceSearchCapability({
       search: searchProvider(),
       registerObservedSources,
-      getKnownCanonicalUrls: () => [
-        'https://known.example.com/story',
-      ],
+      getKnownCanonicalUrls: () => ['https://known.example.com/story'],
     });
 
     expect(
@@ -437,13 +407,12 @@ describe('related-source research search capability', () => {
   });
 
   it('preserves provider truncation metadata', async () => {
-    const search =
-      vi.fn<ResearchSearchProvider>().mockResolvedValue({
-        fetchedAt: new Date(),
-        totalArticles: 100,
-        articles: providerArticles(),
-        truncated: true,
-      });
+    const search = vi.fn<ResearchSearchProvider>().mockResolvedValue({
+      fetchedAt: new Date(),
+      totalArticles: 100,
+      articles: providerArticles(),
+      truncated: true,
+    });
 
     const capability = createRelatedSourceSearchCapability({
       search,
@@ -465,14 +434,13 @@ describe('related-source research search capability', () => {
   });
 
   it('maps provider rate limits safely', async () => {
-    const search =
-      vi.fn<ResearchSearchProvider>().mockRejectedValue(
-        new GNewsError({
-          kind: 'http',
-          statusCode: 429,
-          message: 'provider secret',
-        }),
-      );
+    const search = vi.fn<ResearchSearchProvider>().mockRejectedValue(
+      new GNewsError({
+        kind: 'http',
+        statusCode: 429,
+        message: 'provider secret',
+      }),
+    );
 
     const capability = createRelatedSourceSearchCapability({
       search,
@@ -497,10 +465,9 @@ describe('related-source research search capability', () => {
   });
 
   it('does not expose unexpected provider errors', async () => {
-    const search =
-      vi.fn<ResearchSearchProvider>().mockRejectedValue(
-        new Error('secret API key and stack'),
-      );
+    const search = vi
+      .fn<ResearchSearchProvider>()
+      .mockRejectedValue(new Error('secret API key and stack'));
 
     const capability = createRelatedSourceSearchCapability({
       search,
@@ -559,8 +526,6 @@ describe('related-source research search capability', () => {
         getKnownCanonicalUrls: () => [],
         limit: 11,
       }),
-    ).toThrow(
-      'Research search limit must be between 1 and 10.',
-    );
+    ).toThrow('Research search limit must be between 1 and 10.');
   });
 });

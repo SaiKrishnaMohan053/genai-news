@@ -160,9 +160,7 @@ function isBlockedHostname(hostname: string): boolean {
 }
 
 function isPublicAddress(address: string, family: 4 | 6): boolean {
-  return family === 4
-    ? !blockedIpv4.check(address, 'ipv4')
-    : !blockedIpv6.check(address, 'ipv6');
+  return family === 4 ? !blockedIpv4.check(address, 'ipv4') : !blockedIpv6.check(address, 'ipv6');
 }
 
 async function defaultLookup(

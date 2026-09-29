@@ -8,10 +8,7 @@ import {
   type SourceArticle,
 } from '@genai-news/shared';
 
-import {
-  GNewsError,
-  type GNewsSearchResult,
-} from '../gnews/index.js';
+import { GNewsError, type GNewsSearchResult } from '../gnews/index.js';
 
 const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_TOOL_RESULTS = 10;
@@ -48,11 +45,10 @@ export type ResearchSearchCapabilityOptions = Readonly<{
   limit?: number;
 }>;
 
-export type RelatedSourceSearchCapabilityOptions =
-  ResearchSearchCapabilityOptions &
-    Readonly<{
-      getKnownCanonicalUrls: () => readonly string[];
-    }>;
+export type RelatedSourceSearchCapabilityOptions = ResearchSearchCapabilityOptions &
+  Readonly<{
+    getKnownCanonicalUrls: () => readonly string[];
+  }>;
 
 /**
  * Deterministic capability backing search_official_source.
@@ -60,9 +56,7 @@ export type RelatedSourceSearchCapabilityOptions =
  * "Official" is search intent only. Results are candidates and are never
  * treated here as authenticated, verified, or claim-confirming sources.
  */
-export function createOfficialSourceSearchCapability(
-  options: ResearchSearchCapabilityOptions,
-) {
+export function createOfficialSourceSearchCapability(options: ResearchSearchCapabilityOptions) {
   return createSearchCapability(options, () => []);
 }
 
@@ -73,13 +67,8 @@ export function createOfficialSourceSearchCapability(
  * results are additional coverage candidates only; this capability does not
  * claim independence, confirmation, or verification.
  */
-export function createRelatedSourceSearchCapability(
-  options: RelatedSourceSearchCapabilityOptions,
-) {
-  return createSearchCapability(
-    options,
-    options.getKnownCanonicalUrls,
-  );
+export function createRelatedSourceSearchCapability(options: RelatedSourceSearchCapabilityOptions) {
+  return createSearchCapability(options, options.getKnownCanonicalUrls);
 }
 
 function createSearchCapability(
@@ -127,9 +116,7 @@ function createSearchCapability(
         status: 'ok',
         sources: [],
         rejectedCount: prepared.rejectedCount,
-        truncated:
-          providerResult.truncated ||
-          providerResult.articles.length > limit,
+        truncated: providerResult.truncated || providerResult.articles.length > limit,
       };
     }
 
@@ -155,9 +142,7 @@ function createSearchCapability(
       status: 'ok',
       sources: registered.map(toSourceView),
       rejectedCount: prepared.rejectedCount,
-      truncated:
-        providerResult.truncated ||
-        providerResult.articles.length > limit,
+      truncated: providerResult.truncated || providerResult.articles.length > limit,
     };
   };
 }
@@ -207,10 +192,7 @@ function prepareCandidates(
       url: normalized.url,
       canonicalUrl: normalized.canonicalUrl,
       title: boundedText(article.title, MAX_TITLE_LENGTH),
-      publisherName: boundedText(
-        article.publisher?.name,
-        MAX_PUBLISHER_LENGTH,
-      ),
+      publisherName: boundedText(article.publisher?.name, MAX_PUBLISHER_LENGTH),
       publishedAt: parsePublishedAt(article.publishedAt),
       excerpt: boundedText(article.summary, MAX_EXCERPT_LENGTH),
     });
@@ -252,26 +234,17 @@ function registrationMatches(
 
 function toSourceView(
   source: ResearchSource,
-): Extract<
-  ResearchSearchResult,
-  { status: 'ok' }
->['sources'][number] {
+): Extract<ResearchSearchResult, { status: 'ok' }>['sources'][number] {
   return {
     sourceId: source.sourceId,
     title: boundedText(source.title, MAX_TITLE_LENGTH),
-    publisherName: boundedText(
-      source.publisherName,
-      MAX_PUBLISHER_LENGTH,
-    ),
+    publisherName: boundedText(source.publisherName, MAX_PUBLISHER_LENGTH),
     publishedAt: source.publishedAt?.toISOString() ?? null,
     excerpt: null,
   };
 }
 
-function boundedText(
-  value: string | null | undefined,
-  maxLength: number,
-): string | null {
+function boundedText(value: string | null | undefined, maxLength: number): string | null {
   if (value === undefined || value === null) {
     return null;
   }
@@ -285,9 +258,7 @@ function boundedText(
   return normalized.slice(0, maxLength);
 }
 
-function parsePublishedAt(
-  value: string | undefined,
-): Date | null {
+function parsePublishedAt(value: string | undefined): Date | null {
   if (value === undefined) {
     return null;
   }
@@ -298,22 +269,14 @@ function parsePublishedAt(
 }
 
 function validateLimit(value: number): number {
-  if (
-    !Number.isInteger(value) ||
-    value <= 0 ||
-    value > MAX_TOOL_RESULTS
-  ) {
-    throw new Error(
-      `Research search limit must be between 1 and ${MAX_TOOL_RESULTS}.`,
-    );
+  if (!Number.isInteger(value) || value <= 0 || value > MAX_TOOL_RESULTS) {
+    throw new Error(`Research search limit must be between 1 and ${MAX_TOOL_RESULTS}.`);
   }
 
   return value;
 }
 
-function mapSearchFailure(
-  error: unknown,
-): ResearchSearchResult {
+function mapSearchFailure(error: unknown): ResearchSearchResult {
   if (!(error instanceof GNewsError)) {
     return createResearchToolError('tool-failed');
   }
@@ -330,11 +293,7 @@ function mapSearchFailure(
         return createResearchToolError('rate-limited');
       }
 
-      if (
-        error.statusCode === 502 ||
-        error.statusCode === 503 ||
-        error.statusCode === 504
-      ) {
+      if (error.statusCode === 502 || error.statusCode === 503 || error.statusCode === 504) {
         return createResearchToolError('unavailable');
       }
 
