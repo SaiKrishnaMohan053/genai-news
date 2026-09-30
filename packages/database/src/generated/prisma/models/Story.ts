@@ -217,6 +217,7 @@ export type StoryWhereInput = {
   seedArticle?: Prisma.XOR<Prisma.ArticleScalarRelationFilter, Prisma.ArticleWhereInput>
   representativeArticle?: Prisma.XOR<Prisma.ArticleScalarRelationFilter, Prisma.ArticleWhereInput>
   memberships?: Prisma.StoryMembershipListRelationFilter
+  researchRuns?: Prisma.ResearchRunListRelationFilter
 }
 
 export type StoryOrderByWithRelationInput = {
@@ -232,6 +233,7 @@ export type StoryOrderByWithRelationInput = {
   seedArticle?: Prisma.ArticleOrderByWithRelationInput
   representativeArticle?: Prisma.ArticleOrderByWithRelationInput
   memberships?: Prisma.StoryMembershipOrderByRelationAggregateInput
+  researchRuns?: Prisma.ResearchRunOrderByRelationAggregateInput
 }
 
 export type StoryWhereUniqueInput = Prisma.AtLeast<{
@@ -250,6 +252,7 @@ export type StoryWhereUniqueInput = Prisma.AtLeast<{
   seedArticle?: Prisma.XOR<Prisma.ArticleScalarRelationFilter, Prisma.ArticleWhereInput>
   representativeArticle?: Prisma.XOR<Prisma.ArticleScalarRelationFilter, Prisma.ArticleWhereInput>
   memberships?: Prisma.StoryMembershipListRelationFilter
+  researchRuns?: Prisma.ResearchRunListRelationFilter
 }, "id" | "seedArticleId" | "representativeArticleId">
 
 export type StoryOrderByWithAggregationInput = {
@@ -293,6 +296,7 @@ export type StoryCreateInput = {
   seedArticle: Prisma.ArticleCreateNestedOneWithoutSeededStoriesInput
   representativeArticle: Prisma.ArticleCreateNestedOneWithoutRepresentedStoriesInput
   memberships?: Prisma.StoryMembershipCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunCreateNestedManyWithoutStoryInput
 }
 
 export type StoryUncheckedCreateInput = {
@@ -306,6 +310,7 @@ export type StoryUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   memberships?: Prisma.StoryMembershipUncheckedCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunUncheckedCreateNestedManyWithoutStoryInput
 }
 
 export type StoryUpdateInput = {
@@ -319,6 +324,7 @@ export type StoryUpdateInput = {
   seedArticle?: Prisma.ArticleUpdateOneRequiredWithoutSeededStoriesNestedInput
   representativeArticle?: Prisma.ArticleUpdateOneRequiredWithoutRepresentedStoriesNestedInput
   memberships?: Prisma.StoryMembershipUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateInput = {
@@ -332,6 +338,7 @@ export type StoryUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   memberships?: Prisma.StoryMembershipUncheckedUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUncheckedUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryCreateManyInput = {
@@ -517,6 +524,20 @@ export type StoryUpdateOneRequiredWithoutMembershipsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.StoryUpdateToOneWithWhereWithoutMembershipsInput, Prisma.StoryUpdateWithoutMembershipsInput>, Prisma.StoryUncheckedUpdateWithoutMembershipsInput>
 }
 
+export type StoryCreateNestedOneWithoutResearchRunsInput = {
+  create?: Prisma.XOR<Prisma.StoryCreateWithoutResearchRunsInput, Prisma.StoryUncheckedCreateWithoutResearchRunsInput>
+  connectOrCreate?: Prisma.StoryCreateOrConnectWithoutResearchRunsInput
+  connect?: Prisma.StoryWhereUniqueInput
+}
+
+export type StoryUpdateOneRequiredWithoutResearchRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.StoryCreateWithoutResearchRunsInput, Prisma.StoryUncheckedCreateWithoutResearchRunsInput>
+  connectOrCreate?: Prisma.StoryCreateOrConnectWithoutResearchRunsInput
+  upsert?: Prisma.StoryUpsertWithoutResearchRunsInput
+  connect?: Prisma.StoryWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoryUpdateToOneWithWhereWithoutResearchRunsInput, Prisma.StoryUpdateWithoutResearchRunsInput>, Prisma.StoryUncheckedUpdateWithoutResearchRunsInput>
+}
+
 export type StoryCreateWithoutSeedArticleInput = {
   id: string
   canonicalTitle: string
@@ -527,6 +548,7 @@ export type StoryCreateWithoutSeedArticleInput = {
   updatedAt?: Date | string
   representativeArticle: Prisma.ArticleCreateNestedOneWithoutRepresentedStoriesInput
   memberships?: Prisma.StoryMembershipCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunCreateNestedManyWithoutStoryInput
 }
 
 export type StoryUncheckedCreateWithoutSeedArticleInput = {
@@ -539,6 +561,7 @@ export type StoryUncheckedCreateWithoutSeedArticleInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   memberships?: Prisma.StoryMembershipUncheckedCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunUncheckedCreateNestedManyWithoutStoryInput
 }
 
 export type StoryCreateOrConnectWithoutSeedArticleInput = {
@@ -561,6 +584,7 @@ export type StoryCreateWithoutRepresentativeArticleInput = {
   updatedAt?: Date | string
   seedArticle: Prisma.ArticleCreateNestedOneWithoutSeededStoriesInput
   memberships?: Prisma.StoryMembershipCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunCreateNestedManyWithoutStoryInput
 }
 
 export type StoryUncheckedCreateWithoutRepresentativeArticleInput = {
@@ -573,6 +597,7 @@ export type StoryUncheckedCreateWithoutRepresentativeArticleInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   memberships?: Prisma.StoryMembershipUncheckedCreateNestedManyWithoutStoryInput
+  researchRuns?: Prisma.ResearchRunUncheckedCreateNestedManyWithoutStoryInput
 }
 
 export type StoryCreateOrConnectWithoutRepresentativeArticleInput = {
@@ -642,6 +667,7 @@ export type StoryCreateWithoutMembershipsInput = {
   updatedAt?: Date | string
   seedArticle: Prisma.ArticleCreateNestedOneWithoutSeededStoriesInput
   representativeArticle: Prisma.ArticleCreateNestedOneWithoutRepresentedStoriesInput
+  researchRuns?: Prisma.ResearchRunCreateNestedManyWithoutStoryInput
 }
 
 export type StoryUncheckedCreateWithoutMembershipsInput = {
@@ -654,6 +680,7 @@ export type StoryUncheckedCreateWithoutMembershipsInput = {
   lastPublishedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  researchRuns?: Prisma.ResearchRunUncheckedCreateNestedManyWithoutStoryInput
 }
 
 export type StoryCreateOrConnectWithoutMembershipsInput = {
@@ -682,6 +709,7 @@ export type StoryUpdateWithoutMembershipsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   seedArticle?: Prisma.ArticleUpdateOneRequiredWithoutSeededStoriesNestedInput
   representativeArticle?: Prisma.ArticleUpdateOneRequiredWithoutRepresentedStoriesNestedInput
+  researchRuns?: Prisma.ResearchRunUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateWithoutMembershipsInput = {
@@ -694,6 +722,75 @@ export type StoryUncheckedUpdateWithoutMembershipsInput = {
   lastPublishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  researchRuns?: Prisma.ResearchRunUncheckedUpdateManyWithoutStoryNestedInput
+}
+
+export type StoryCreateWithoutResearchRunsInput = {
+  id: string
+  canonicalTitle: string
+  clusteringVersion: string
+  firstPublishedAt?: Date | string | null
+  lastPublishedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seedArticle: Prisma.ArticleCreateNestedOneWithoutSeededStoriesInput
+  representativeArticle: Prisma.ArticleCreateNestedOneWithoutRepresentedStoriesInput
+  memberships?: Prisma.StoryMembershipCreateNestedManyWithoutStoryInput
+}
+
+export type StoryUncheckedCreateWithoutResearchRunsInput = {
+  id: string
+  canonicalTitle: string
+  seedArticleId: string
+  representativeArticleId: string
+  clusteringVersion: string
+  firstPublishedAt?: Date | string | null
+  lastPublishedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  memberships?: Prisma.StoryMembershipUncheckedCreateNestedManyWithoutStoryInput
+}
+
+export type StoryCreateOrConnectWithoutResearchRunsInput = {
+  where: Prisma.StoryWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoryCreateWithoutResearchRunsInput, Prisma.StoryUncheckedCreateWithoutResearchRunsInput>
+}
+
+export type StoryUpsertWithoutResearchRunsInput = {
+  update: Prisma.XOR<Prisma.StoryUpdateWithoutResearchRunsInput, Prisma.StoryUncheckedUpdateWithoutResearchRunsInput>
+  create: Prisma.XOR<Prisma.StoryCreateWithoutResearchRunsInput, Prisma.StoryUncheckedCreateWithoutResearchRunsInput>
+  where?: Prisma.StoryWhereInput
+}
+
+export type StoryUpdateToOneWithWhereWithoutResearchRunsInput = {
+  where?: Prisma.StoryWhereInput
+  data: Prisma.XOR<Prisma.StoryUpdateWithoutResearchRunsInput, Prisma.StoryUncheckedUpdateWithoutResearchRunsInput>
+}
+
+export type StoryUpdateWithoutResearchRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalTitle?: Prisma.StringFieldUpdateOperationsInput | string
+  clusteringVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  firstPublishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPublishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seedArticle?: Prisma.ArticleUpdateOneRequiredWithoutSeededStoriesNestedInput
+  representativeArticle?: Prisma.ArticleUpdateOneRequiredWithoutRepresentedStoriesNestedInput
+  memberships?: Prisma.StoryMembershipUpdateManyWithoutStoryNestedInput
+}
+
+export type StoryUncheckedUpdateWithoutResearchRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  canonicalTitle?: Prisma.StringFieldUpdateOperationsInput | string
+  seedArticleId?: Prisma.StringFieldUpdateOperationsInput | string
+  representativeArticleId?: Prisma.StringFieldUpdateOperationsInput | string
+  clusteringVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  firstPublishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPublishedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.StoryMembershipUncheckedUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryCreateManySeedArticleInput = {
@@ -728,6 +825,7 @@ export type StoryUpdateWithoutSeedArticleInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   representativeArticle?: Prisma.ArticleUpdateOneRequiredWithoutRepresentedStoriesNestedInput
   memberships?: Prisma.StoryMembershipUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateWithoutSeedArticleInput = {
@@ -740,6 +838,7 @@ export type StoryUncheckedUpdateWithoutSeedArticleInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   memberships?: Prisma.StoryMembershipUncheckedUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUncheckedUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateManyWithoutSeedArticleInput = {
@@ -763,6 +862,7 @@ export type StoryUpdateWithoutRepresentativeArticleInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   seedArticle?: Prisma.ArticleUpdateOneRequiredWithoutSeededStoriesNestedInput
   memberships?: Prisma.StoryMembershipUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateWithoutRepresentativeArticleInput = {
@@ -775,6 +875,7 @@ export type StoryUncheckedUpdateWithoutRepresentativeArticleInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   memberships?: Prisma.StoryMembershipUncheckedUpdateManyWithoutStoryNestedInput
+  researchRuns?: Prisma.ResearchRunUncheckedUpdateManyWithoutStoryNestedInput
 }
 
 export type StoryUncheckedUpdateManyWithoutRepresentativeArticleInput = {
@@ -795,10 +896,12 @@ export type StoryUncheckedUpdateManyWithoutRepresentativeArticleInput = {
 
 export type StoryCountOutputType = {
   memberships: number
+  researchRuns: number
 }
 
 export type StoryCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   memberships?: boolean | StoryCountOutputTypeCountMembershipsArgs
+  researchRuns?: boolean | StoryCountOutputTypeCountResearchRunsArgs
 }
 
 /**
@@ -818,6 +921,13 @@ export type StoryCountOutputTypeCountMembershipsArgs<ExtArgs extends runtime.Typ
   where?: Prisma.StoryMembershipWhereInput
 }
 
+/**
+ * StoryCountOutputType without action
+ */
+export type StoryCountOutputTypeCountResearchRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ResearchRunWhereInput
+}
+
 
 export type StorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -832,6 +942,7 @@ export type StorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   seedArticle?: boolean | Prisma.ArticleDefaultArgs<ExtArgs>
   representativeArticle?: boolean | Prisma.ArticleDefaultArgs<ExtArgs>
   memberships?: boolean | Prisma.Story$membershipsArgs<ExtArgs>
+  researchRuns?: boolean | Prisma.Story$researchRunsArgs<ExtArgs>
   _count?: boolean | Prisma.StoryCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["story"]>
 
@@ -880,6 +991,7 @@ export type StoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   seedArticle?: boolean | Prisma.ArticleDefaultArgs<ExtArgs>
   representativeArticle?: boolean | Prisma.ArticleDefaultArgs<ExtArgs>
   memberships?: boolean | Prisma.Story$membershipsArgs<ExtArgs>
+  researchRuns?: boolean | Prisma.Story$researchRunsArgs<ExtArgs>
   _count?: boolean | Prisma.StoryCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type StoryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -897,6 +1009,7 @@ export type $StoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     seedArticle: Prisma.$ArticlePayload<ExtArgs>
     representativeArticle: Prisma.$ArticlePayload<ExtArgs>
     memberships: Prisma.$StoryMembershipPayload<ExtArgs>[]
+    researchRuns: Prisma.$ResearchRunPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1305,6 +1418,7 @@ export interface Prisma__StoryClient<T, Null = never, ExtArgs extends runtime.Ty
   seedArticle<T extends Prisma.ArticleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ArticleDefaultArgs<ExtArgs>>): Prisma.Prisma__ArticleClient<runtime.Types.Result.GetResult<Prisma.$ArticlePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   representativeArticle<T extends Prisma.ArticleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ArticleDefaultArgs<ExtArgs>>): Prisma.Prisma__ArticleClient<runtime.Types.Result.GetResult<Prisma.$ArticlePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   memberships<T extends Prisma.Story$membershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Story$membershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StoryMembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  researchRuns<T extends Prisma.Story$researchRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Story$researchRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ResearchRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1765,6 +1879,30 @@ export type Story$membershipsArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.StoryMembershipScalarFieldEnum | Prisma.StoryMembershipScalarFieldEnum[]
+}
+
+/**
+ * Story.researchRuns
+ */
+export type Story$researchRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ResearchRun
+   */
+  select?: Prisma.ResearchRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ResearchRun
+   */
+  omit?: Prisma.ResearchRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ResearchRunInclude<ExtArgs> | null
+  where?: Prisma.ResearchRunWhereInput
+  orderBy?: Prisma.ResearchRunOrderByWithRelationInput | Prisma.ResearchRunOrderByWithRelationInput[]
+  cursor?: Prisma.ResearchRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ResearchRunScalarFieldEnum | Prisma.ResearchRunScalarFieldEnum[]
 }
 
 /**

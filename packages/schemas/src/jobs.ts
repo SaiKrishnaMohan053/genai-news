@@ -20,3 +20,15 @@ export const newsDiscoveryJobSchema = z.object({
 });
 
 export type NewsDiscoveryJobPayload = z.infer<typeof newsDiscoveryJobSchema>;
+
+export const researchJobSchema = z
+  .object({
+    researchRunId: z.string().trim().min(1).max(200),
+
+    requestedAt: z.iso.datetime({
+      offset: true,
+    }),
+  })
+  .strict();
+
+export type ResearchJobPayload = z.infer<typeof researchJobSchema>;

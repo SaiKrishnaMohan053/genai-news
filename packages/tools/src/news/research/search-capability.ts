@@ -51,6 +51,17 @@ export type RelatedSourceSearchCapabilityOptions = ResearchSearchCapabilityOptio
   }>;
 
 /**
+ * Deterministic capability backing search_news.
+ *
+ * Search results are candidates only. Every accepted result must be
+ * registered in the application-owned research source catalog before
+ * it is exposed to the agent.
+ */
+export function createNewsSearchCapability(options: ResearchSearchCapabilityOptions) {
+  return createSearchCapability(options, () => []);
+}
+
+/**
  * Deterministic capability backing search_official_source.
  *
  * "Official" is search intent only. Results are candidates and are never

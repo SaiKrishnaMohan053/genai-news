@@ -54,7 +54,8 @@ export const ModelName = {
   SystemRecord: 'SystemRecord',
   Article: 'Article',
   Story: 'Story',
-  StoryMembership: 'StoryMembership'
+  StoryMembership: 'StoryMembership',
+  ResearchRun: 'ResearchRun'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -140,6 +141,29 @@ export const StoryMembershipScalarFieldEnum = {
 export type StoryMembershipScalarFieldEnum = (typeof StoryMembershipScalarFieldEnum)[keyof typeof StoryMembershipScalarFieldEnum]
 
 
+export const ResearchRunScalarFieldEnum = {
+  id: 'id',
+  storyId: 'storyId',
+  idempotencyKey: 'idempotencyKey',
+  status: 'status',
+  researchGoal: 'researchGoal',
+  budget: 'budget',
+  outcome: 'outcome',
+  stopReason: 'stopReason',
+  selection: 'selection',
+  modelCalls: 'modelCalls',
+  toolCalls: 'toolCalls',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  executionToken: 'executionToken',
+  leaseExpiresAt: 'leaseExpiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ResearchRunScalarFieldEnum = (typeof ResearchRunScalarFieldEnum)[keyof typeof ResearchRunScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -154,6 +178,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

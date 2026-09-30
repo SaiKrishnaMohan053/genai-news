@@ -85,6 +85,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@genai-news/agents':
+        specifier: workspace:*
+        version: link:../../packages/agents
       '@genai-news/database':
         specifier: workspace:*
         version: link:../../packages/database

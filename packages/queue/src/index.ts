@@ -17,3 +17,12 @@ export {
   NEWS_DISCOVERY_QUEUE_NAME,
   type NewsDiscoveryQueue,
 } from './news-discovery-queue.js';
+
+export {
+  createResearchJobId,
+  createResearchQueue,
+  enqueueResearch,
+  RESEARCH_JOB_NAME,
+  RESEARCH_QUEUE_NAME,
+  type ResearchQueue,
+} from './research-queue.js';

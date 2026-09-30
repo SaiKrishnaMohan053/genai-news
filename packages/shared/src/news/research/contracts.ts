@@ -122,6 +122,25 @@ export const researchAgentSelectionSchema = z.strictObject({
 
 export type ResearchAgentSelection = z.infer<typeof researchAgentSelectionSchema>;
 
+/**
+ * Application-owned research package.
+ *
+ * This packages the immutable research snapshot, observed source catalog,
+ * and validated model selection without allowing the model to invent
+ * source facts, provenance, URLs, or run identity.
+ */
+export const researchPackageSchema = z.strictObject({
+  contractVersion: z.literal(INITIAL_RESEARCH_CONTRACT_VERSION),
+
+  context: researchContextSchema,
+
+  catalog: researchSourceCatalogSchema,
+
+  selection: researchAgentSelectionSchema,
+});
+
+export type ResearchPackage = z.infer<typeof researchPackageSchema>;
+
 /** No production defaults are selected in the domain-contract subphase. */
 export const researchBudgetSchema = z.strictObject({
   maxToolCalls: z.number().int().nonnegative(),

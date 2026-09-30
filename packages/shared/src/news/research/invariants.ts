@@ -1,13 +1,16 @@
 import { assertCanonicalStory } from '../story/invariants.js';
 
 import {
+  INITIAL_RESEARCH_CONTRACT_VERSION,
   researchAgentSelectionSchema,
   researchBudgetSchema,
   researchContextSchema,
+  researchPackageSchema,
   researchSourceCatalogSchema,
   type ResearchAgentSelection,
   type ResearchBudget,
   type ResearchContext,
+  type ResearchPackage,
   type ResearchSourceCatalog,
 } from './contracts.js';
 
@@ -113,6 +116,39 @@ export function validateResearchAgentSelection(
   }
 
   return selection;
+}
+
+export type AssembleResearchPackageInput = Readonly<{
+  context: ResearchContext;
+
+  catalog: ResearchSourceCatalog;
+
+  selection: ResearchAgentSelection;
+
+  budget: ResearchBudget;
+}>;
+
+export function assembleResearchPackage(input: AssembleResearchPackageInput): ResearchPackage {
+  assertResearchContext(input.context);
+
+  assertResearchSourceCatalog(input.catalog, input.context);
+
+  const selection = validateResearchAgentSelection(
+    input.selection,
+    input.catalog,
+    input.context,
+    input.budget,
+  );
+
+  return researchPackageSchema.parse({
+    contractVersion: INITIAL_RESEARCH_CONTRACT_VERSION,
+
+    context: input.context,
+
+    catalog: input.catalog,
+
+    selection,
+  });
 }
 
 function assertUnique(values: readonly string[], label: string): void {

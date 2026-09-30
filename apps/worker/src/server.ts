@@ -8,7 +8,11 @@ import {
 
 import { createRedisClient, createWorkerRedisClient } from '@genai-news/queue';
 
-import { createArticleRepository, createPrismaClient } from '@genai-news/database';
+import {
+  createArticleRepository,
+  createPrismaClient,
+  createResearchRunRepository,
+} from '@genai-news/database';
 
 import { createOpenAiSemanticEmbeddingClient } from '@genai-news/tools';
 
@@ -26,11 +30,19 @@ import { createNewsDiscoveryWorker } from './news-worker.js';
 
 import { createSystemWorker } from './worker.js';
 
+import { createResearchWorker } from './research-worker.js';
+
+import { createResearchAgentExecutor } from './research/research-executor.js';
+
+import { createProductionResearchRuntimeFactory } from './research/research-production.js';
+
 const env = loadWorkerEnv();
 
 const database = createPrismaClient(env.DATABASE_URL);
 
 const articleRepository = createArticleRepository(database);
+
+const researchRunRepository = createResearchRunRepository(database);
 
 const semanticEmbeddingClient = createOpenAiSemanticEmbeddingClient({
   apiKey: env.OPENAI_API_KEY,
@@ -41,6 +53,20 @@ const semanticEmbeddingClient = createOpenAiSemanticEmbeddingClient({
 const sourceRegistry = createNewsSourceRegistry({
   gnewsApiKey: env.GNEWS_API_KEY,
   rssSources: env.NEWS_RSS_SOURCES_JSON,
+});
+
+const researchRuntimeFactory = createProductionResearchRuntimeFactory({
+  database,
+
+  openAiApiKey: env.OPENAI_API_KEY,
+
+  gnewsApiKey: env.GNEWS_API_KEY,
+
+  environment: process.env,
+});
+
+const researchExecutor = createResearchAgentExecutor({
+  createRuntime: researchRuntimeFactory,
 });
 
 const freshnessPolicy = {
@@ -89,6 +115,8 @@ const workerRedis = createWorkerRedisClient(env.REDIS_URL);
 
 const discoveryWorkerRedis = createWorkerRedisClient(env.REDIS_URL);
 
+const researchWorkerRedis = createWorkerRedisClient(env.REDIS_URL);
+
 const healthRedis = createRedisClient(env.REDIS_URL);
 
 const worker = createSystemWorker(workerRedis);
@@ -107,6 +135,14 @@ const discoveryWorker = createNewsDiscoveryWorker({
   metrics: newsDiscoveryMetrics,
 
   logger,
+});
+
+const researchWorker = createResearchWorker({
+  connection: researchWorkerRedis,
+
+  researchRunRepository,
+
+  runResearch: researchExecutor,
 });
 
 const healthServer = createWorkerHealthServer({
@@ -265,6 +301,86 @@ discoveryWorker.on(
   },
 );
 
+researchWorker.on('ready', () => {
+  logger.info('research worker ready');
+});
+
+researchWorker.on(
+  'completed',
+
+  (job, result) => {
+    emitStructuredEvent({
+      logger,
+
+      event: 'research.execution.completed',
+
+      attributes: {
+        jobId: job.id,
+
+        jobName: job.name,
+
+        researchRunId: result.researchRunId,
+
+        resultKind: result.kind,
+
+        ...(result.kind === 'completed'
+          ? {
+              outcome: result.outcome,
+
+              stopReason: result.stopReason,
+
+              modelCalls: result.modelCalls,
+
+              toolCalls: result.toolCalls,
+            }
+          : {
+              persistedStatus: result.status,
+            }),
+      },
+    });
+  },
+);
+
+researchWorker.on(
+  'failed',
+
+  (job, error) => {
+    emitStructuredEvent({
+      logger,
+
+      event: 'research.execution.failed',
+
+      level: 'error',
+
+      attributes: {
+        jobId: job?.id,
+
+        jobName: job?.name,
+
+        researchRunId: job?.data.researchRunId,
+
+        requestedAt: job?.data.requestedAt,
+      },
+
+      error,
+    });
+  },
+);
+
+researchWorker.on(
+  'error',
+
+  (error) => {
+    logger.error(
+      {
+        err: error,
+      },
+
+      'research worker error',
+    );
+  },
+);
+
 let shuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
@@ -283,6 +399,8 @@ async function shutdown(signal: string): Promise<void> {
   );
 
   try {
+    await researchWorker.close();
+
     await discoveryWorker.close();
 
     await worker.close();
@@ -306,6 +424,8 @@ async function shutdown(signal: string): Promise<void> {
     workerRedis.disconnect();
 
     discoveryWorkerRedis.disconnect();
+
+    researchWorkerRedis.disconnect();
 
     if (tracing) {
       await tracing.shutdown();

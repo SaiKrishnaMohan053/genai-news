@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  INITIAL_RESEARCH_CONTRACT_VERSION,
   assertResearchContext,
   assertResearchSourceCatalog,
   researchAgentSelectionSchema,
@@ -8,6 +9,8 @@ import {
   researchRequestSchema,
   researchSourceSchema,
   validateResearchAgentSelection,
+  assembleResearchPackage,
+  researchPackageSchema,
   type ResearchAgentSelection,
   type ResearchBudget,
   type ResearchContext,
@@ -421,5 +424,63 @@ describe('research budget contracts', () => {
         ...override,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('research package', () => {
+  it('assembles a validated package from application-owned research state', () => {
+    const { context, catalog, selection, budget } = fixture();
+
+    const packageResult = assembleResearchPackage({
+      context,
+      catalog,
+      selection,
+      budget,
+    });
+
+    expect(packageResult).toEqual({
+      contractVersion: INITIAL_RESEARCH_CONTRACT_VERSION,
+      context,
+      catalog,
+      selection,
+    });
+
+    expect(researchPackageSchema.safeParse(packageResult).success).toBe(true);
+  });
+
+  it('rejects a package whose catalog belongs to another research run', () => {
+    const { context, catalog, selection, budget } = fixture();
+
+    expect(() =>
+      assembleResearchPackage({
+        context,
+
+        catalog: {
+          ...catalog,
+          researchRunId: 'different-run',
+        },
+
+        selection,
+        budget,
+      }),
+    ).toThrow('Source catalog must belong to the same research run and story.');
+  });
+
+  it('rejects package selection that references an unobserved source', () => {
+    const { context, catalog, selection, budget } = fixture();
+
+    expect(() =>
+      assembleResearchPackage({
+        context,
+        catalog,
+
+        selection: {
+          ...selection,
+          sourceIds: ['invented-source'],
+        },
+
+        budget,
+      }),
+    ).toThrow('Selected source must exist in the source catalog.');
   });
 });

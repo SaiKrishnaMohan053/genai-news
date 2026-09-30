@@ -81,6 +81,7 @@ model Story {
   representativeArticle Article @relation("StoryRepresentativeArticle", fields: [representativeArticleId], references: [id], onDelete: Restrict)
 
   memberships StoryMembership[]
+  researchRuns ResearchRun[]
 
   @@index([firstPublishedAt])
   @@index([lastPublishedAt])
@@ -114,4 +115,65 @@ model StoryMembership {
   @@index([storyId])
   @@index([clusteringVersion])
   @@map("story_memberships")
+}
+
+model ResearchRun {
+  id String @id
+
+  storyId String
+
+  idempotencyKey String @unique
+
+  status ResearchRunStatus
+
+  researchGoal String?
+
+  budget Json
+
+  outcome    ResearchRunOutcome?
+  stopReason ResearchRunStopReason?
+  selection  Json?
+
+  modelCalls Int @default(0)
+  toolCalls  Int @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  executionToken String?
+  leaseExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Restrict)
+
+  @@index([storyId])
+  @@index([status])
+  @@index([status, leaseExpiresAt])
+  @@index([createdAt])
+  @@map("research_runs")
+}
+
+enum ResearchRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ResearchRunOutcome {
+  COMPLETE
+  PARTIAL
+  INSUFFICIENT_SOURCES
+  FAILED
+}
+
+enum ResearchRunStopReason {
+  CRITERIA_SATISFIED
+  NO_USEFUL_RESULTS
+  TOOL_BUDGET_EXHAUSTED
+  MODEL_BUDGET_EXHAUSTED
+  DEADLINE_EXCEEDED
+  TERMINAL_FAILURE
 }

@@ -4,8 +4,10 @@ export {
   jobIdSchema,
   newsDiscoveryJobSchema,
   systemPingJobSchema,
+  researchJobSchema,
   type NewsDiscoveryJobPayload,
   type SystemPingJobPayload,
+  type ResearchJobPayload,
 } from './jobs.js';
 
 export {

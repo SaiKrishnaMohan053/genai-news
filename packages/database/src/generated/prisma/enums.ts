@@ -15,3 +15,35 @@ export const StoryMembershipKind = {
 } as const
 
 export type StoryMembershipKind = (typeof StoryMembershipKind)[keyof typeof StoryMembershipKind]
+
+
+export const ResearchRunStatus = {
+  PENDING: 'PENDING',
+  RUNNING: 'RUNNING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED'
+} as const
+
+export type ResearchRunStatus = (typeof ResearchRunStatus)[keyof typeof ResearchRunStatus]
+
+
+export const ResearchRunOutcome = {
+  COMPLETE: 'COMPLETE',
+  PARTIAL: 'PARTIAL',
+  INSUFFICIENT_SOURCES: 'INSUFFICIENT_SOURCES',
+  FAILED: 'FAILED'
+} as const
+
+export type ResearchRunOutcome = (typeof ResearchRunOutcome)[keyof typeof ResearchRunOutcome]
+
+
+export const ResearchRunStopReason = {
+  CRITERIA_SATISFIED: 'CRITERIA_SATISFIED',
+  NO_USEFUL_RESULTS: 'NO_USEFUL_RESULTS',
+  TOOL_BUDGET_EXHAUSTED: 'TOOL_BUDGET_EXHAUSTED',
+  MODEL_BUDGET_EXHAUSTED: 'MODEL_BUDGET_EXHAUSTED',
+  DEADLINE_EXCEEDED: 'DEADLINE_EXCEEDED',
+  TERMINAL_FAILURE: 'TERMINAL_FAILURE'
+} as const
+
+export type ResearchRunStopReason = (typeof ResearchRunStopReason)[keyof typeof ResearchRunStopReason]

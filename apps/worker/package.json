@@ -12,6 +12,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
+    "@genai-news/agents": "workspace:*",
     "@genai-news/database": "workspace:*",
     "@genai-news/observability": "workspace:*",
     "@genai-news/queue": "workspace:*",

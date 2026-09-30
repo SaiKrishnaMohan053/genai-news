@@ -4,3 +4,5 @@ export * from './stories/index.js';
 export { createPrismaClient, type DatabaseClient } from './client.js';
 
 export { checkDatabaseHealth } from './health.js';
+
+export * from './research/index.js';

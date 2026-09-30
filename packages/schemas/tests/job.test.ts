@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { jobIdSchema, newsDiscoveryJobSchema, systemPingJobSchema } from '../src/index.js';
+import {
+  jobIdSchema,
+  newsDiscoveryJobSchema,
+  systemPingJobSchema,
+  researchJobSchema,
+  type ResearchJobPayload,
+} from '../src/index.js';
 
 describe('jobIdSchema', () => {
   it('accepts a valid job id', () => {
@@ -125,6 +131,55 @@ describe('newsDiscoveryJobSchema', () => {
         sourceId: 'gnews',
         limit: 25,
         requestedAt: 'invalid',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('researchJobSchema', () => {
+  it('accepts a valid research job payload', () => {
+    const payload: ResearchJobPayload = {
+      researchRunId: 'research-run-123',
+      requestedAt: '2026-09-29T22:30:00.000Z',
+    };
+
+    expect(researchJobSchema.parse(payload)).toEqual(payload);
+  });
+
+  it('rejects a blank research run id', () => {
+    expect(() =>
+      researchJobSchema.parse({
+        researchRunId: '   ',
+        requestedAt: '2026-09-29T22:30:00.000Z',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects an invalid requestedAt value', () => {
+    expect(() =>
+      researchJobSchema.parse({
+        researchRunId: 'research-run-123',
+        requestedAt: 'not-a-date',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects unexpected payload fields', () => {
+    expect(() =>
+      researchJobSchema.parse({
+        researchRunId: 'research-run-123',
+        requestedAt: '2026-09-29T22:30:00.000Z',
+
+        storyId: 'story-should-not-be-here',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects an excessively long research run id', () => {
+    expect(() =>
+      researchJobSchema.parse({
+        researchRunId: 'r'.repeat(201),
+        requestedAt: '2026-09-29T22:30:00.000Z',
       }),
     ).toThrow();
   });
