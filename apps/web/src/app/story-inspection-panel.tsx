@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { ResearchInspectionPanel } from './research-inspection-panel';
+
 type StoryListItem = {
   id: string;
 
@@ -298,6 +300,8 @@ function StoryDetailView({ story }: { story: StoryDetail }) {
           <StoryMetadata label="Representative" value={story.representativeArticleId} />
         </dl>
       </div>
+
+      <ResearchInspectionPanel storyId={story.id} />
 
       <div className="mt-8">
         <h4 className="text-sm font-semibold text-slate-900">

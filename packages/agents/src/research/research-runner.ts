@@ -109,8 +109,6 @@ export async function runResearchAgent(input: ResearchRunnerInput): Promise<Rese
         messages.push(toolMessage);
 
         scope.throwIfAborted();
-
-        messages.push(toolMessage);
       }
     }
 
