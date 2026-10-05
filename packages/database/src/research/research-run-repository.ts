@@ -136,6 +136,8 @@ export type ResearchRunRepository = {
 
   findById(researchRunId: string): Promise<PersistedResearchRun | null>;
 
+  findLatestByStoryId(storyId: string): Promise<PersistedResearchRun | null>;
+
   findByIdempotencyKey(idempotencyKey: string): Promise<PersistedResearchRun | null>;
 };
 
@@ -507,6 +509,27 @@ export function createResearchRunRepository(database: DatabaseClient): ResearchR
         where: {
           id: researchRunId,
         },
+      });
+
+      return run === null ? null : mapResearchRun(run);
+    },
+
+    async findLatestByStoryId(storyId) {
+      assertNonEmpty(storyId, 'Story id');
+
+      const run = await database.researchRun.findFirst({
+        where: {
+          storyId,
+        },
+
+        orderBy: [
+          {
+            createdAt: 'desc',
+          },
+          {
+            id: 'desc',
+          },
+        ],
       });
 
       return run === null ? null : mapResearchRun(run);

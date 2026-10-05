@@ -29,6 +29,9 @@ importers:
       '@genai-news/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
+      '@genai-news/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2

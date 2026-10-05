@@ -1,7 +1,11 @@
 import { buildApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { createPrismaClient } from '@genai-news/database';
-import { createNewsDiscoveryQueue, createRedisClient } from '@genai-news/queue';
+import {
+  createNewsDiscoveryQueue,
+  createRedisClient,
+  createResearchQueue,
+} from '@genai-news/queue';
 import {
   createLogger,
   createMetricsRegistry,
@@ -24,6 +28,7 @@ const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
 const database = createPrismaClient(env.DATABASE_URL);
 const redis = createRedisClient(env.REDIS_URL);
 const newsDiscoveryQueue = createNewsDiscoveryQueue(redis);
+const researchQueue = createResearchQueue(redis);
 const supportedNewsSourceIds = ['gnews', ...env.NEWS_RSS_SOURCES_JSON.map((source) => source.id)];
 
 const app = buildApp({
@@ -32,6 +37,7 @@ const app = buildApp({
   redis,
   metricsRegistry,
   newsDiscoveryQueue,
+  researchQueue,
   newsDiscoveryMetrics,
   supportedNewsSourceIds,
 });
@@ -75,6 +81,8 @@ async function shutdown(signal: string): Promise<void> {
     await app.close();
 
     await newsDiscoveryQueue.close();
+
+    await researchQueue.close();
 
     await database.$disconnect();
 

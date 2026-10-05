@@ -810,6 +810,62 @@ describe('research run repository integration', () => {
       }),
     ).rejects.toBeInstanceOf(ResearchPersistenceConflictError);
   });
+
+  it('returns the latest research run for a story', async () => {
+    const story = await createTestStory('latest-by-story');
+
+    const repository = createResearchRunRepository(database);
+
+    await repository.createPending({
+      researchRunId: 'research-latest-older',
+      storyId: story.id,
+      idempotencyKey: 'research:latest:older',
+      budget,
+    });
+
+    await repository.createPending({
+      researchRunId: 'research-latest-newer',
+      storyId: story.id,
+      idempotencyKey: 'research:latest:newer',
+      budget,
+    });
+
+    await database.researchRun.update({
+      where: {
+        id: 'research-latest-older',
+      },
+      data: {
+        createdAt: new Date('2026-09-29T13:00:00.000Z'),
+      },
+    });
+
+    await database.researchRun.update({
+      where: {
+        id: 'research-latest-newer',
+      },
+      data: {
+        createdAt: new Date('2026-09-29T13:01:00.000Z'),
+      },
+    });
+
+    const latest = await repository.findLatestByStoryId(story.id);
+
+    expect(latest).not.toBeNull();
+
+    expect(latest?.id).toBe('research-latest-newer');
+
+    expect(latest?.storyId).toBe(story.id);
+  });
+
+  it('returns null when a story has no research runs', async () => {
+    const story = await createTestStory('no-research-runs');
+
+    const repository = createResearchRunRepository(database);
+
+    const latest = await repository.findLatestByStoryId(story.id);
+
+    expect(latest).toBeNull();
+  });
 });
 
 async function createTestStory(suffix: string) {
