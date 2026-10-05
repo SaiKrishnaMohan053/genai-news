@@ -98,7 +98,6 @@ export function ResearchInspectionPanel({ storyId }: { storyId: string }) {
 
       if (response.status === 404 && getErrorCode(body) === 'STORY_RESEARCH_NOT_FOUND') {
         setResearchRun(null);
-
         return;
       }
 
@@ -115,9 +114,47 @@ export function ResearchInspectionPanel({ storyId }: { storyId: string }) {
   }, [storyId]);
 
   useEffect(() => {
-    void loadResearch();
-  }, [loadResearch]);
+    let cancelled = false;
 
+    async function loadInitialResearch() {
+      try {
+        const response = await fetch(`/api/news/stories/${encodeURIComponent(storyId)}/research`, {
+          cache: 'no-store',
+        });
+
+        const body = (await response.json()) as ResearchRunResponse | ApiErrorResponse;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response.status === 404 && getErrorCode(body) === 'STORY_RESEARCH_NOT_FOUND') {
+          setResearchRun(null);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(getErrorMessage(body, 'Failed to load research.'));
+        }
+
+        setResearchRun((body as ResearchRunResponse).researchRun);
+      } catch (error) {
+        if (!cancelled) {
+          setError(toErrorMessage(error));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialResearch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storyId]);
   async function startResearch() {
     setStarting(true);
     setError(null);
