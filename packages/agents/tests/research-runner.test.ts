@@ -163,7 +163,7 @@ describe('bounded research agent runner', () => {
     });
   });
 
-  it('stops when model-call budget cannot cover final selection', async () => {
+  it('reserves the final model call for structured selection', async () => {
     const input: ResearchRunnerInput = {
       ...baseInput(),
       budget: {
@@ -172,23 +172,91 @@ describe('bounded research agent runner', () => {
       },
     };
 
-    vi.mocked(input.toolCallingModel.invoke).mockResolvedValue(
-      new AIMessage({
-        content: 'No more tools.',
-        tool_calls: [],
-      }),
-    );
+    vi.mocked(input.structuredOutputModel.invoke).mockResolvedValue({
+      sourceIds: ['source-1'],
+      primarySourceCandidateIds: [],
+      unresolvedQuestions: [],
+      completionSuggestion: 'coverage-sufficient',
+    });
 
     const result = await runResearchAgent(input);
 
     expect(result).toEqual({
-      status: 'stopped',
-      reason: 'model-budget-exhausted',
+      status: 'selected',
+      selection: {
+        sourceIds: ['source-1'],
+        primarySourceCandidateIds: [],
+        unresolvedQuestions: [],
+        completionSuggestion: 'coverage-sufficient',
+      },
       modelCalls: 1,
       toolCalls: 0,
     });
 
-    expect(input.structuredOutputModel.invoke).not.toHaveBeenCalled();
+    expect(input.toolCallingModel.invoke).not.toHaveBeenCalled();
+    expect(input.structuredOutputModel.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves one model call for final selection after repeated tool use', async () => {
+    const input = baseInput();
+
+    vi.mocked(input.toolCallingModel.invoke)
+      .mockResolvedValueOnce(
+        new AIMessage({
+          content: '',
+          tool_calls: [
+            {
+              id: 'call-1',
+              name: 'fetch_article',
+              args: {
+                sourceId: 'source-1',
+              },
+              type: 'tool_call',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        new AIMessage({
+          content: '',
+          tool_calls: [
+            {
+              id: 'call-2',
+              name: 'fetch_article',
+              args: {
+                sourceId: 'source-1',
+              },
+              type: 'tool_call',
+            },
+          ],
+        }),
+      );
+
+    vi.mocked(input.toolPorts.fetchArticle).mockResolvedValue({
+      status: 'ok',
+      sourceId: 'source-1',
+      text: 'Research evidence.',
+      fetchedAt: '2026-10-05T22:00:00.000Z',
+      truncated: false,
+    });
+
+    vi.mocked(input.structuredOutputModel.invoke).mockResolvedValue({
+      sourceIds: ['source-1'],
+      primarySourceCandidateIds: [],
+      unresolvedQuestions: [],
+      completionSuggestion: 'coverage-sufficient',
+    });
+
+    const result = await runResearchAgent(input);
+
+    expect(result).toMatchObject({
+      status: 'selected',
+      modelCalls: 3,
+      toolCalls: 2,
+    });
+
+    expect(input.toolCallingModel.invoke).toHaveBeenCalledTimes(2);
+    expect(input.structuredOutputModel.invoke).toHaveBeenCalledTimes(1);
   });
 
   it('stops before executing a tool beyond tool budget', async () => {

@@ -74,6 +74,12 @@ export async function runResearchAgent(input: ResearchRunnerInput): Promise<Rese
     for (;;) {
       scope.throwIfAborted();
 
+      const snapshot = scope.policy.getSnapshot();
+
+      if (snapshot.remainingModelCalls <= 1) {
+        break;
+      }
+
       try {
         scope.policy.reserveModelCall();
       } catch (error) {
