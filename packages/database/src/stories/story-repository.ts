@@ -226,6 +226,30 @@ export function createStoryRepository(database: DatabaseClient): StoryRepository
            * Phase 2 never silently reassigns it.
            */
           if (existingMembership !== null) {
+            const winningStory = await transaction.story.findUnique({
+              where: {
+                id: existingMembership.storyId,
+              },
+            });
+
+            const compatibleExistingSeed =
+              winningStory !== null &&
+              existingMembership.kind === 'SEED' &&
+              existingMembership.articleId === input.seedArticleId &&
+              existingMembership.clusteringVersion === input.clusteringVersion &&
+              winningStory.seedArticleId === input.seedArticleId &&
+              winningStory.representativeArticleId === input.seedArticleId &&
+              winningStory.canonicalTitle === input.canonicalTitle &&
+              winningStory.clusteringVersion === input.clusteringVersion;
+
+            if (compatibleExistingSeed) {
+              return {
+                story: mapStory(winningStory),
+                membership: mapRequiredMembership(existingMembership),
+                created: false,
+              };
+            }
+
             throw new StoryPersistenceConflictError(
               [
                 'Seed article already belongs to another story.',

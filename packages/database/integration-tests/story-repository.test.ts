@@ -321,6 +321,44 @@ describe('story repository integration', () => {
     ).toBe(1);
   });
 
+  it('reuses an existing compatible seed story when a later request generated a different story id', async () => {
+    const seed = await persistArticle(
+      'compatible-existing-seed',
+      'Compatible existing seed',
+      new Date('2026-09-01T10:00:00.000Z'),
+    );
+
+    const repository = createStoryRepository(database);
+
+    const first = await repository.createSeedStory({
+      storyId: storyId('story-compatible-a'),
+      seedArticleId: articleId(seed.id),
+      canonicalTitle: seed.title,
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    const second = await repository.createSeedStory({
+      storyId: storyId('story-compatible-b'),
+      seedArticleId: articleId(seed.id),
+      canonicalTitle: seed.title,
+      clusteringVersion: INITIAL_STORY_CLUSTERING_VERSION,
+    });
+
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+
+    expect(second.story.id).toBe(first.story.id);
+    expect(second.membership.storyId).toBe(first.story.id);
+
+    expect(
+      await database.storyMembership.count({
+        where: {
+          articleId: seed.id,
+        },
+      }),
+    ).toBe(1);
+  });
+
   it('rejects silent reassignment to another story', async () => {
     const seedA = await persistArticle(
       'conflict-seed-a',
