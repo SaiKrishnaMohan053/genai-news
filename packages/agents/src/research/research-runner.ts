@@ -1,3 +1,4 @@
+import { traceable } from 'langsmith/traceable';
 import {
   isToolMessage,
   type BaseMessage,
@@ -46,7 +47,7 @@ export type ResearchRunnerResult =
       toolCalls: number;
     }>;
 
-export async function runResearchAgent(input: ResearchRunnerInput): Promise<ResearchRunnerResult> {
+async function runResearchAgentCore(input: ResearchRunnerInput): Promise<ResearchRunnerResult> {
   const initialCatalog = input.getCatalog();
 
   const messages: BaseMessage[] = [
@@ -168,6 +169,49 @@ export async function runResearchAgent(input: ResearchRunnerInput): Promise<Rese
   } finally {
     scope.dispose();
   }
+}
+
+const tracedRunResearchAgent = traceable(
+  async (input: ResearchRunnerInput): Promise<ResearchRunnerResult> => runResearchAgentCore(input),
+  {
+    name: 'research.agent.run',
+    tags: ['research-agent'],
+    processInputs: (input) => ({
+      researchRunId: input.context.researchRunId,
+      storyId: input.context.story.id,
+      hasResearchGoal:
+        typeof input.context.request.researchGoal === 'string' &&
+        input.context.request.researchGoal.length > 0,
+      budget: {
+        maxToolCalls: input.budget.maxToolCalls,
+        maxModelCalls: input.budget.maxModelCalls,
+        timeoutMs: input.budget.timeoutMs,
+        maxSelectedSources: input.budget.maxSelectedSources,
+      },
+      initialSourceCount: input.getCatalog().sources.length,
+    }),
+    processOutputs: (output) =>
+      output.status === 'selected'
+        ? {
+            status: output.status,
+            modelCalls: output.modelCalls,
+            toolCalls: output.toolCalls,
+            selectedSourceCount: output.selection.sourceIds.length,
+            primarySourceCandidateCount: output.selection.primarySourceCandidateIds.length,
+            unresolvedQuestionCount: output.selection.unresolvedQuestions.length,
+            completionSuggestion: output.selection.completionSuggestion,
+          }
+        : {
+            status: output.status,
+            reason: output.reason,
+            modelCalls: output.modelCalls,
+            toolCalls: output.toolCalls,
+          },
+  },
+);
+
+export async function runResearchAgent(input: ResearchRunnerInput): Promise<ResearchRunnerResult> {
+  return tracedRunResearchAgent(input);
 }
 
 function stoppedFromBudgetError(
