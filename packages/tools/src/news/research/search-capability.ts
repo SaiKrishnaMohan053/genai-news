@@ -151,7 +151,7 @@ function createSearchCapability(
 
     return {
       status: 'ok',
-      sources: registered.map(toSourceView),
+      sources: registered.map((source, index) => toSourceView(source, prepared.candidates[index])),
       rejectedCount: prepared.rejectedCount,
       truncated: providerResult.truncated || providerResult.articles.length > limit,
     };
@@ -245,13 +245,14 @@ function registrationMatches(
 
 function toSourceView(
   source: ResearchSource,
+  candidate: ResearchObservedSearchCandidate | undefined,
 ): Extract<ResearchSearchResult, { status: 'ok' }>['sources'][number] {
   return {
     sourceId: source.sourceId,
     title: boundedText(source.title, MAX_TITLE_LENGTH),
     publisherName: boundedText(source.publisherName, MAX_PUBLISHER_LENGTH),
     publishedAt: source.publishedAt?.toISOString() ?? null,
-    excerpt: null,
+    excerpt: boundedText(candidate?.excerpt, MAX_EXCERPT_LENGTH),
   };
 }
 

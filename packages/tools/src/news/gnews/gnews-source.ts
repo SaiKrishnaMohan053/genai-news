@@ -33,6 +33,10 @@ export type GNewsSearchResult = Readonly<{
   truncated: boolean;
 }>;
 
+function normalizeSearchQuery(value: string): string {
+  return value.replace(/[$]/gu, ' ').replace(/\s+/gu, ' ').trim();
+}
+
 export class GNewsSource implements NewsSource {
   readonly id = 'gnews';
   readonly name = 'GNews';
@@ -141,7 +145,7 @@ export class GNewsSource implements NewsSource {
   }
 
   async search(input: GNewsSearchInput): Promise<GNewsSearchResult> {
-    const query = input.query.trim();
+    const query = normalizeSearchQuery(input.query);
 
     if (!query) {
       throw new Error('GNews search query must not be empty.');

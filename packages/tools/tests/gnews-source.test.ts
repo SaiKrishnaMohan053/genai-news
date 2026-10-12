@@ -444,4 +444,26 @@ describe('GNewsSource search', () => {
       statusCode: 429,
     });
   });
+
+  it('normalizes provider-unsafe search punctuation before sending it', async () => {
+    const fixture = await loadFixture();
+
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      return Response.json(fixture);
+    });
+
+    const source = new GNewsSource({
+      apiKey: 'test-api-key',
+      fetchImpl,
+    });
+
+    await source.search({
+      query: 'Nvidia Shield TV Pro price hike $100',
+      limit: 5,
+    });
+
+    const [url] = fetchImpl.mock.calls[0]!;
+
+    expect(new URL(String(url)).searchParams.get('q')).toBe('Nvidia Shield TV Pro price hike 100');
+  });
 });
