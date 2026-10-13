@@ -257,6 +257,10 @@ describe('processResearchJob', () => {
       modelCalls: 2,
 
       toolCalls: 3,
+
+      selectedSourceCount: 1,
+
+      unresolvedQuestionCount: 0,
     });
   });
 

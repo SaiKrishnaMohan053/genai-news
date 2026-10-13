@@ -2,6 +2,7 @@ import {
   createLogger,
   createMetricsRegistry,
   createNewsDiscoveryMetrics,
+  createResearchMetrics,
   createStoryClusteringMetrics,
   emitStructuredEvent,
 } from '@genai-news/observability';
@@ -65,10 +66,6 @@ const researchRuntimeFactory = createProductionResearchRuntimeFactory({
   environment: process.env,
 });
 
-const researchExecutor = createResearchAgentExecutor({
-  createRuntime: researchRuntimeFactory,
-});
-
 const freshnessPolicy = {
   maxAgeMs: env.NEWS_FRESHNESS_HOURS * 60 * 60 * 1000,
 
@@ -92,6 +89,13 @@ const metricsRegistry = createMetricsRegistry({
 });
 
 const newsDiscoveryMetrics = createNewsDiscoveryMetrics(metricsRegistry);
+
+const researchMetrics = createResearchMetrics(metricsRegistry);
+
+const researchExecutor = createResearchAgentExecutor({
+  createRuntime: researchRuntimeFactory,
+  metrics: researchMetrics,
+});
 
 const storyClusteringMetrics = createStoryClusteringMetrics(metricsRegistry);
 
@@ -143,6 +147,8 @@ const researchWorker = createResearchWorker({
   researchRunRepository,
 
   runResearch: researchExecutor,
+
+  metrics: researchMetrics,
 });
 
 const healthServer = createWorkerHealthServer({
@@ -332,6 +338,10 @@ researchWorker.on(
               modelCalls: result.modelCalls,
 
               toolCalls: result.toolCalls,
+
+              selectedSourceCount: result.selectedSourceCount,
+
+              unresolvedQuestionCount: result.unresolvedQuestionCount,
             }
           : {
               persistedStatus: result.status,

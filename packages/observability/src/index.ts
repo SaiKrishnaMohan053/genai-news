@@ -28,3 +28,9 @@ export {
   type StoryClusteringMetrics,
   type StoryClusteringOutcome,
 } from './story-clustering-metrics.js';
+export {
+  createResearchMetrics,
+  type ResearchMetrics,
+  type ResearchOutcome,
+  type ResearchStopReason,
+} from './research-metrics.js';

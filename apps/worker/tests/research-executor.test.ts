@@ -1,5 +1,7 @@
 import type { ResearchRunnerInput, ResearchRunnerResult } from '@genai-news/agents';
 
+import { createMetricsRegistry, createResearchMetrics } from '@genai-news/observability';
+
 import type { ResearchBudget, ResearchContext, ResearchSourceCatalog } from '@genai-news/shared';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -169,6 +171,68 @@ describe('createResearchAgentExecutor', () => {
     });
   });
 
+  it('records selected-source and unresolved-question counts without content labels', async () => {
+    const runnerResult: ResearchRunnerResult = {
+      status: 'selected',
+
+      selection: {
+        sourceIds: ['source-1'],
+
+        primarySourceCandidateIds: ['source-1'],
+
+        unresolvedQuestions: [
+          'What changed after the initial report?',
+          'Is there an official confirmation?',
+        ],
+
+        completionSuggestion: 'coverage-incomplete',
+      },
+
+      modelCalls: 2,
+
+      toolCalls: 1,
+    };
+
+    const runAgent = vi.fn<(input: ResearchRunnerInput) => Promise<ResearchRunnerResult>>(
+      async () => runnerResult,
+    );
+
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
+
+    const executor = createResearchAgentExecutor({
+      createRuntime: async () => createRuntime(),
+
+      metrics,
+
+      runAgent,
+    });
+
+    const result = await executor(executionInput);
+
+    expect(result.outcome).toBe('partial');
+
+    const metricsOutput = await metricsRegistry.metrics();
+
+    expect(metricsOutput).toMatch(
+      /genai_news_research_selected_sources_total\{[^}]*outcome="partial"[^}]*\} 1/,
+    );
+
+    expect(metricsOutput).toMatch(
+      /genai_news_research_unresolved_questions_total\{[^}]*outcome="partial"[^}]*\} 2/,
+    );
+
+    expect(metricsOutput).not.toContain('source-1');
+    expect(metricsOutput).not.toContain('What changed after the initial report?');
+    expect(metricsOutput).not.toContain('Is there an official confirmation?');
+    expect(metricsOutput).not.toContain('research-run-1');
+    expect(metricsOutput).not.toContain('story-1');
+  });
   it('maps a runner budget stop to a normal partial result', async () => {
     const runAgent = vi.fn(async (): Promise<ResearchRunnerResult> => ({
       status: 'stopped',

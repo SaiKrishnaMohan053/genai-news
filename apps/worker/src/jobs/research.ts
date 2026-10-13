@@ -42,6 +42,16 @@ export type ResearchExecutionInput = {
 
 export type ResearchExecutor = (input: ResearchExecutionInput) => Promise<ResearchExecutionResult>;
 
+export class ResearchExecutionFailedError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'Research execution failed.');
+
+    this.name = 'ResearchExecutionFailedError';
+    this.cause = cause;
+  }
+}
 export type ResearchJobDependencies = {
   researchRunRepository: ResearchRunRepository;
 
@@ -66,6 +76,9 @@ export type ResearchJobResult =
 
       modelCalls: number;
       toolCalls: number;
+
+      selectedSourceCount: number;
+      unresolvedQuestionCount: number;
     }
   | {
       kind: 'already-claimed';
@@ -183,21 +196,29 @@ export async function processResearchJob(
       modelCalls: execution.modelCalls,
 
       toolCalls: execution.toolCalls,
+
+      selectedSourceCount: execution.selection?.sourceIds.length ?? 0,
+
+      unresolvedQuestionCount: execution.selection?.unresolvedQuestions.length ?? 0,
     };
   } catch (error) {
-    await dependencies.researchRunRepository.fail({
-      researchRunId: claim.run.id,
+    try {
+      await dependencies.researchRunRepository.fail({
+        researchRunId: claim.run.id,
 
-      executionToken,
+        executionToken,
 
-      modelCalls: 0,
+        modelCalls: 0,
 
-      toolCalls: 0,
+        toolCalls: 0,
 
-      completedAt: now(),
-    });
+        completedAt: now(),
+      });
+    } catch (persistenceError) {
+      throw new ResearchExecutionFailedError(persistenceError);
+    }
 
-    throw error;
+    throw new ResearchExecutionFailedError(error);
   }
 }
 

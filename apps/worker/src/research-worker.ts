@@ -1,6 +1,6 @@
 import type { ResearchRunRepository } from '@genai-news/database';
 
-import { runWithSpan } from '@genai-news/observability';
+import { runWithSpan, type ResearchMetrics } from '@genai-news/observability';
 
 import { RESEARCH_JOB_NAME, RESEARCH_QUEUE_NAME, type WorkerRedisClient } from '@genai-news/queue';
 
@@ -10,6 +10,7 @@ import { DelayedError, type Job, Worker } from 'bullmq';
 
 import {
   processResearchJob,
+  ResearchExecutionFailedError,
   type ResearchExecutor,
   type ResearchJobResult,
 } from './jobs/research.js';
@@ -23,6 +24,8 @@ export type CreateResearchWorkerOptions = {
   researchRunRepository: ResearchRunRepository;
 
   runResearch: ResearchExecutor;
+
+  metrics?: ResearchMetrics;
 
   now?: () => Date;
 
@@ -45,95 +48,138 @@ export async function processResearchWorkerJob(
     throw new Error(`Unsupported job name: ${job.name}`);
   }
 
-  return runWithSpan(
-    {
-      tracerName: 'genai-news-worker',
+  const executionStartedAt = performance.now();
 
-      spanName: `job ${job.name}`,
+  try {
+    return await runWithSpan(
+      {
+        tracerName: 'genai-news-worker',
 
-      attributes: {
-        'messaging.system': 'bullmq',
+        spanName: `job ${job.name}`,
 
-        'messaging.destination.name': RESEARCH_QUEUE_NAME,
+        attributes: {
+          'messaging.system': 'bullmq',
 
-        'messaging.operation.name': 'process',
+          'messaging.destination.name': RESEARCH_QUEUE_NAME,
 
-        'job.name': job.name,
+          'messaging.operation.name': 'process',
 
-        'research.run.id': job.data.researchRunId,
+          'job.name': job.name,
 
-        ...(job.id
-          ? {
-              'job.id': job.id,
-            }
-          : {}),
+          'research.run.id': job.data.researchRunId,
+
+          ...(job.id
+            ? {
+                'job.id': job.id,
+              }
+            : {}),
+        },
       },
-    },
 
-    async (span) => {
-      const result = await processResearchJob(job.data, {
-        researchRunRepository: options.researchRunRepository,
+      async (span) => {
+        const result = await processResearchJob(job.data, {
+          researchRunRepository: options.researchRunRepository,
 
-        runResearch: options.runResearch,
+          runResearch: options.runResearch,
 
-        ...(options.now === undefined
-          ? {}
-          : {
-              now: options.now,
-            }),
+          ...(options.metrics === undefined
+            ? {}
+            : {
+                metrics: options.metrics,
+              }),
 
-        ...(options.createExecutionToken === undefined
-          ? {}
-          : {
-              createExecutionToken: options.createExecutionToken,
-            }),
+          ...(options.now === undefined
+            ? {}
+            : {
+                now: options.now,
+              }),
 
-        ...(options.leaseSafetyBufferMs === undefined
-          ? {}
-          : {
-              leaseSafetyBufferMs: options.leaseSafetyBufferMs,
-            }),
+          ...(options.createExecutionToken === undefined
+            ? {}
+            : {
+                createExecutionToken: options.createExecutionToken,
+              }),
+
+          ...(options.leaseSafetyBufferMs === undefined
+            ? {}
+            : {
+                leaseSafetyBufferMs: options.leaseSafetyBufferMs,
+              }),
+        });
+
+        span.setAttribute('research.job.result_kind', result.kind);
+
+        if (result.kind === 'completed') {
+          span.setAttribute('research.outcome', result.outcome);
+          span.setAttribute('research.stop_reason', result.stopReason);
+          span.setAttribute('research.model_calls', result.modelCalls);
+          span.setAttribute('research.tool_calls', result.toolCalls);
+          span.setAttribute('research.selected_source_count', result.selectedSourceCount);
+          span.setAttribute('research.unresolved_question_count', result.unresolvedQuestionCount);
+
+          options.metrics?.executionsTotal.inc({
+            outcome: result.outcome,
+            stop_reason: result.stopReason,
+          });
+
+          options.metrics?.modelCallsTotal.inc(result.modelCalls);
+          options.metrics?.toolCallsTotal.inc(result.toolCalls);
+
+          options.metrics?.executionDurationSeconds.observe(
+            {
+              outcome: result.outcome,
+            },
+            (performance.now() - executionStartedAt) / 1000,
+          );
+
+          return result;
+        }
+
+        span.setAttribute('research.persisted_status', result.status);
+
+        if (result.status !== 'RUNNING') {
+          return result;
+        }
+
+        const persisted = await options.researchRunRepository.findById(result.researchRunId);
+
+        if (persisted === null) {
+          throw new Error(
+            `Research run disappeared while resolving lease contention: ${result.researchRunId}`,
+          );
+        }
+
+        const currentTime = (options.now ?? (() => new Date()))();
+
+        const retryAt = Math.max(
+          currentTime.getTime() + LEASE_RETRY_FALLBACK_MS,
+          (persisted.leaseExpiresAt?.getTime() ?? currentTime.getTime()) + LEASE_RETRY_GRACE_MS,
+        );
+
+        span.setAttribute('research.lease_retry_at', new Date(retryAt).toISOString());
+
+        await job.moveToDelayed(retryAt, token);
+
+        throw new DelayedError();
+      },
+    );
+  } catch (error) {
+    if (error instanceof ResearchExecutionFailedError) {
+      options.metrics?.executionsTotal.inc({
+        outcome: 'failed',
+        stop_reason: 'terminal-failure',
       });
 
-      span.setAttribute('research.job.result_kind', result.kind);
-
-      if (result.kind === 'completed') {
-        span.setAttribute('research.outcome', result.outcome);
-        span.setAttribute('research.stop_reason', result.stopReason);
-        span.setAttribute('research.model_calls', result.modelCalls);
-        span.setAttribute('research.tool_calls', result.toolCalls);
-
-        return result;
-      }
-
-      span.setAttribute('research.persisted_status', result.status);
-
-      if (result.status !== 'RUNNING') {
-        return result;
-      }
-
-      const persisted = await options.researchRunRepository.findById(result.researchRunId);
-
-      if (persisted === null) {
-        throw new Error(
-          `Research run disappeared while resolving lease contention: ${result.researchRunId}`,
-        );
-      }
-
-      const currentTime = (options.now ?? (() => new Date()))();
-
-      const retryAt = Math.max(
-        currentTime.getTime() + LEASE_RETRY_FALLBACK_MS,
-        (persisted.leaseExpiresAt?.getTime() ?? currentTime.getTime()) + LEASE_RETRY_GRACE_MS,
+      options.metrics?.executionDurationSeconds.observe(
+        {
+          outcome: 'failed',
+        },
+        (performance.now() - executionStartedAt) / 1000,
       );
+    }
 
-      span.setAttribute('research.lease_retry_at', new Date(retryAt).toISOString());
-
-      await job.moveToDelayed(retryAt, token);
-
-      throw new DelayedError();
-    },
-  );
+    throw error;
+  }
 }
 
 export function createResearchWorker(options: CreateResearchWorkerOptions) {
@@ -148,6 +194,12 @@ export function createResearchWorker(options: CreateResearchWorkerOptions) {
         researchRunRepository: options.researchRunRepository,
 
         runResearch: options.runResearch,
+
+        ...(options.metrics === undefined
+          ? {}
+          : {
+              metrics: options.metrics,
+            }),
 
         ...(options.now === undefined
           ? {}

@@ -5,6 +5,8 @@ import {
   type ResearchRunnerResult,
 } from '@genai-news/agents';
 
+import type { ResearchMetrics } from '@genai-news/observability';
+
 import type { ResearchContext } from '@genai-news/shared';
 
 import type {
@@ -21,6 +23,8 @@ export type ResearchRunnerRuntimeFactory = (
 
 export type CreateResearchAgentExecutorOptions = {
   createRuntime: ResearchRunnerRuntimeFactory;
+
+  metrics?: ResearchMetrics;
 
   runAgent?: (input: ResearchRunnerInput) => Promise<ResearchRunnerResult>;
 };
@@ -60,6 +64,22 @@ export function createResearchAgentExecutor(
 
     if (result.stopReason === 'terminal-failure') {
       throw new Error('Research runner returned an unexpected terminal-failure stop reason.');
+    }
+
+    if (result.selection !== null) {
+      options.metrics?.selectedSourcesTotal.inc(
+        {
+          outcome: result.outcome,
+        },
+        result.selection.sourceIds.length,
+      );
+
+      options.metrics?.unresolvedQuestionsTotal.inc(
+        {
+          outcome: result.outcome,
+        },
+        result.selection.unresolvedQuestions.length,
+      );
     }
 
     return {

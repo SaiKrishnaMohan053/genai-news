@@ -1,5 +1,7 @@
 import type { PersistedResearchRun, ResearchRunRepository } from '@genai-news/database';
 
+import { createMetricsRegistry, createResearchMetrics } from '@genai-news/observability';
+
 import { RESEARCH_JOB_NAME, RESEARCH_QUEUE_NAME } from '@genai-news/queue';
 
 import type { ResearchBudget } from '@genai-news/shared';
@@ -215,10 +217,20 @@ describe('research BullMQ worker processor', () => {
 
     const job = createJob();
 
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
+
     const result = await processResearchWorkerJob(job, 'bullmq-token', {
       researchRunRepository: repository,
 
       runResearch,
+
+      metrics,
 
       createExecutionToken: () => 'execution-token',
 
@@ -247,11 +259,124 @@ describe('research BullMQ worker processor', () => {
       modelCalls: 2,
 
       toolCalls: 3,
+
+      selectedSourceCount: 0,
+
+      unresolvedQuestionCount: 0,
     });
+
+    const metricsOutput = await metricsRegistry.metrics();
+
+    expect(metricsOutput).toContain('genai_news_research_executions_total');
+    expect(metricsOutput).toContain('outcome="complete"');
+    expect(metricsOutput).toContain('stop_reason="criteria-satisfied"');
+
+    expect(metricsOutput).toContain('genai_news_research_model_calls_total');
+    expect(metricsOutput).toMatch(/genai_news_research_model_calls_total\{[^}]*\} 2/);
+
+    expect(metricsOutput).toContain('genai_news_research_tool_calls_total');
+    expect(metricsOutput).toMatch(/genai_news_research_tool_calls_total\{[^}]*\} 3/);
+
+    expect(metricsOutput).toContain('genai_news_research_execution_duration_seconds_count');
+    expect(metricsOutput).toMatch(
+      /genai_news_research_execution_duration_seconds_count\{[^}]*outcome="complete"[^}]*\} 1/,
+    );
+
+    expect(metricsOutput).not.toContain('research-run-1');
+    expect(metricsOutput).not.toContain('story-1');
 
     expect(job.moveToDelayed).not.toHaveBeenCalled();
   });
 
+  it('does not count a missing persisted run as a failed research execution', async () => {
+    const repository = createRepository();
+
+    repository.findById = vi.fn(async () => null);
+
+    const runResearch: ResearchExecutor = vi.fn();
+
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
+
+    await expect(
+      processResearchWorkerJob(createJob(), 'bullmq-token', {
+        researchRunRepository: repository,
+
+        runResearch,
+
+        metrics,
+      }),
+    ).rejects.toThrow('Cannot process missing research run');
+
+    expect(runResearch).not.toHaveBeenCalled();
+
+    const metricsOutput = await metricsRegistry.metrics();
+
+    expect(metricsOutput).not.toContain('outcome="failed",stop_reason="terminal-failure"');
+  });
+  it('records terminal failure metrics for exceptional research execution', async () => {
+    const repository = createRepository();
+
+    const runResearch: ResearchExecutor = vi.fn(async () => {
+      throw new Error('model provider unavailable');
+    });
+
+    const job = createJob();
+
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
+
+    const times = [new Date('2026-09-29T18:00:00.000Z'), new Date('2026-09-29T18:00:05.000Z')];
+
+    const promise = processResearchWorkerJob(job, 'bullmq-token', {
+      researchRunRepository: repository,
+
+      runResearch,
+
+      metrics,
+
+      createExecutionToken: () => 'execution-token',
+
+      now: () => {
+        const next = times.shift();
+
+        if (!next) {
+          throw new Error('Unexpected now() call');
+        }
+
+        return next;
+      },
+    });
+
+    await expect(promise).rejects.toThrow('model provider unavailable');
+
+    expect(repository.fail).toHaveBeenCalledTimes(1);
+
+    const metricsOutput = await metricsRegistry.metrics();
+
+    expect(metricsOutput).toContain('genai_news_research_executions_total');
+    expect(metricsOutput).toContain('outcome="failed"');
+    expect(metricsOutput).toContain('stop_reason="terminal-failure"');
+
+    expect(metricsOutput).toMatch(
+      /genai_news_research_execution_duration_seconds_count\{[^}]*outcome="failed"[^}]*\} 1/,
+    );
+
+    expect(metricsOutput).not.toContain('research-run-1');
+    expect(metricsOutput).not.toContain('story-1');
+
+    expect(job.moveToDelayed).not.toHaveBeenCalled();
+  });
   it('treats already completed persisted state as a safe no-op', async () => {
     const repository = createRepository({
       claimed: false,
@@ -262,6 +387,14 @@ describe('research BullMQ worker processor', () => {
     const runResearch: ResearchExecutor = vi.fn();
 
     const job = createJob();
+
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
 
     const result = await processResearchWorkerJob(job, 'bullmq-token', {
       researchRunRepository: repository,
@@ -295,10 +428,20 @@ describe('research BullMQ worker processor', () => {
 
     const job = createJob();
 
+    const metricsRegistry = createMetricsRegistry({
+      service: 'worker',
+      environment: 'test',
+      collectDefaults: false,
+    });
+
+    const metrics = createResearchMetrics(metricsRegistry);
+
     const promise = processResearchWorkerJob(job, 'bullmq-token', {
       researchRunRepository: repository,
 
       runResearch,
+
+      metrics,
 
       now: () => new Date('2026-09-29T18:00:00.000Z'),
     });
@@ -314,6 +457,13 @@ describe('research BullMQ worker processor', () => {
     );
 
     expect(repository.findById).toHaveBeenCalledTimes(2);
+
+    const metricsOutput = await metricsRegistry.metrics();
+
+    expect(metricsOutput).not.toContain(
+      'genai_news_research_executions_total{environment="test",outcome="failed"',
+    );
+    expect(metricsOutput).not.toContain('stop_reason="terminal-failure"');
   });
 
   it('uses a short fallback delay when a RUNNING lease has no expiry', async () => {
